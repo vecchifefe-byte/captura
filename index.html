@@ -435,6 +435,8 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
    ===================================================================== */
 const CFG = {
   NUVEM_URL: 'https://vecchifefe--tour3d-web.modal.run/enviar',
+  MARCA: '',              // nome da imobiliária que aparece no tour (ex.: 'Imobiliária Vecchi')
+  WHATSAPP: '',           // número do botão "Agendar visita", só dígitos com DDI+DDD (ex.: '5521999998888')
   META_TOTAL: 0.75,       // cobertura mínima total
   META_FAIXA: 0.60,       // cobertura mínima em cada altura
   SETORES: 36,            // anel de 360° em fatias de 10°
@@ -1557,6 +1559,19 @@ aoMostrar['tela-resumo'] = () => {
     ? `<h2>Gerar tour 3D</h2><p>Envia o vídeo e os dados de cada cômodo filmado para o processamento. O link do tour aparece aqui quando ficar pronto.</p><button class="btn btn-pri" id="btn-enviar">Enviar para gerar o 3D</button>`
     : `<h2>Arquivos</h2><p>${ehIOS ? 'No iPhone, “Salvar tudo” abre o menu de compartilhar: escolha “Salvar em Arquivos”.' : 'No Android, os arquivos vão para a pasta Downloads.'} Cada cômodo gera um vídeo e um JSON com os dados dos sensores. O envio automático para a nuvem entra quando o servidor estiver pronto.</p><p class="num">Armazenado ${DB.persistente() ? 'no navegador deste aparelho' : 'só na memória (não feche a página)'}.</p>`;
   const be = $('#btn-enviar'); if (be) be.onclick = enviarTudo;
+  // tour do imóvel inteiro: um link com todos os cômodos prontos + código para o site da imobiliária
+  const prontos = cs.filter(c => c.upload && c.upload.tour_url).length;
+  const urlIm = S.imovel.imovel_url || (CFG.NUVEM_URL && cs.some(c => c.upload && c.upload.status_url) ? new URL('/i/' + slug(S.imovel.id) + '/', CFG.NUVEM_URL).href : '');
+  if (urlIm && prontos) {
+    const codigo = `<iframe src="${urlIm}" width="100%" height="600" style="border:0;border-radius:12px" allow="fullscreen; xr-spatial-tracking" allowfullscreen loading="lazy"></iframe>`;
+    saida.insertAdjacentHTML('afterbegin', `<h2>Tour do imóvel</h2><p>${prontos} cômodo${prontos > 1 ? 's' : ''} pronto${prontos > 1 ? 's' : ''} num link só (os outros entram sozinhos quando terminarem).</p>
+      <p><a class="btn btn-pri" style="text-decoration:none" href="${esc(urlIm)}" target="_blank" rel="noopener">Abrir tour do imóvel ↗</a></p>
+      <p><button class="btn-mini" id="btn-copiar-link">Copiar link</button> <button class="btn-mini" id="btn-copiar-iframe">Copiar código para o site</button></p>
+      <textarea readonly rows="3" style="width:100%;font:12px monospace;border-radius:8px;padding:8px" id="txt-iframe">${esc(codigo)}</textarea><hr style="border:0;border-top:1px solid #8883;margin:16px 0">`);
+    const copiar = async (t, b) => { try { await navigator.clipboard.writeText(t); b.textContent = 'Copiado ✓'; } catch (e) { $('#txt-iframe').select(); toast('Selecione e copie'); } };
+    $('#btn-copiar-link').onclick = e => copiar(urlIm, e.currentTarget);
+    $('#btn-copiar-iframe').onclick = e => copiar(codigo, e.currentTarget);
+  }
   $('#btn-res-tudo').disabled = !filmados.length;
   filmados.forEach(async c => {
     try { await prepararArquivos(c); const li = ul.querySelector(`[data-id="${c.id}"]`); if (li) $$('button[disabled]', li).forEach(b => { b.disabled = false; }); } catch (e) {}
@@ -1569,12 +1584,13 @@ async function enviarTudo() {
       c.upload = { estado: 'enviando' }; aoMostrar['tela-resumo']();
       const { video, dados } = await prepararArquivos(c);
       const fd = new FormData();
-      fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome })); fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome }));
+      fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP })); fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome }));
       if (video) fd.append('video', video, video.name); if (dados) fd.append('dados', dados, dados.name);
       const r = await fetch(CFG.NUVEM_URL, { method: 'POST', body: fd });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const j = await r.json().catch(() => ({}));
       c.upload = { estado: j.tour_url ? 'pronto' : 'processando', status_url: j.status_url || null, tour_url: j.tour_url || null };
+      if (j.imovel_url) S.imovel.imovel_url = j.imovel_url;
     } catch (e) { c.upload = { estado: 'erro', mensagem: String(e.message || e) }; }
     await salvarImovel(true); aoMostrar['tela-resumo']();
   }
