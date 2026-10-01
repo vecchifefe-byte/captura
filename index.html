@@ -1657,17 +1657,17 @@ function renderCert(c) {
   if (!k || k.estado === 'enviando') { est.className = 'pill warn'; est.textContent = 'enviando'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Enviando as fotos… <span class="num">${ENV.ok} de ${c.fotos}</span></p>`; return; }
   if (k.estado === 'processando') {
     est.className = 'pill warn'; est.textContent = 'conferindo';
-    const seg = k.desde ? Math.round((Date.now() - k.desde) / 1000) : 0;
+    if (!k.desde) k.desde = Date.now();   // estado salvo por uma versão antiga: começa a contar agora
+    const seg = Math.round((Date.now() - k.desde) / 1000);
     const rel = seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60}s` : `${seg}s`;
     const demais = seg > 360;   // 6 min: passou MUITO do normal
     corpo.innerHTML = `<p class="lead" style="font-size:14px">A nuvem está conferindo as ${c.fotos} fotos.
         ${k.passo ? `<br><b>${esc(k.passo)}</b>` : ''}
         <br><span class="num">${rel}</span> esperando${demais ? '' : ' · costuma levar 1 a 3 min'}</p>
       ${demais ? `<p class="lead" style="font-size:13px;margin-top:6px">Está demorando mais do que devia.
-        Suas fotos estão salvas na nuvem, nada se perdeu. Pode tocar em tentar de novo, ou mandar
-        esta tela para o Fernando resolver.</p>
-        <button class="btn-mini" id="btn-cert-denovo2">Tentar de novo</button>` : ''}`;
-    if (demais) { const b = $('#btn-cert-denovo2'); if (b) b.onclick = () => pedirCertificado(c); }
+        Suas fotos estão salvas na nuvem, nada se perdeu.</p>` : ''}
+      <button class="btn-mini" id="btn-cert-denovo2" style="margin-top:8px">Conferir de novo</button>`;
+    const b = $('#btn-cert-denovo2'); if (b) b.onclick = () => pedirCertificado(c);
     return;
   }
   if (k.estado === 'erro') { est.className = 'pill bad'; est.textContent = 'erro'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Não deu para conferir: ${esc(k.mensagem || '')}</p><button class="btn-mini" id="btn-cert-denovo">Tentar de novo</button>`; const b = $('#btn-cert-denovo'); if (b) b.onclick = () => pedirCertificado(c); return; }
