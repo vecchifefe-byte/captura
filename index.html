@@ -1324,6 +1324,10 @@ async function tirarFoto(m) {
     if (!blob || Cap.estado !== 'gravando') return;
     const seq = Cap.fotoSeq++, take = Cap.take;
     const amb = Cap.ambienteAtual || 'sem-nome';
+    // Registra SEMPRE o ambiente da foto. Sem isto, as fotos tiradas antes do primeiro
+    // "Cheguei em..." ficam de fora do Certificado — na captura de 1/10 foram 33 de 54.
+    const rot = slug(amb);
+    if (!Cap.ambientes[rot]) Cap.ambientes[rot] = Cap.ambienteAtual || ('Início · ' + comodo(S.atual).nome);
     const meta = { seq, t: r2(Cap.tVideo), ambiente: amb, direcao: r1(m.head), inclinacao: r1(m.pitch),
                    nitidez: r1(m.nit), luz: r1(m.luz), w: cv.width, h: cv.height, passos: SEN.passosTot - Cap.passosIni };
     Cap.fotos++; Cap.fotoUlt = m.agora; Cap.fotoHead = m.head; Cap.fotoPitch = m.pitch;
@@ -1609,7 +1613,8 @@ async function encerrarCaptura(modo) {
 
 /* ---------- Certificado de Captura: a nuvem confere antes de você ir embora ---------- */
 function partesDoComodo(c) {
-  const amb = c.ambientes && Object.keys(c.ambientes).length ? c.ambientes : { 'sem-nome': c.nome };
+  const amb = Object.assign({}, c.ambientes || {});
+  if (!Object.keys(amb).length) amb['sem-nome'] = c.nome;
   return Object.entries(amb).map(([rot, nome]) => ({ rotulo: rot, nome, tipo: 'comodo', comodo: rot, take: c.take }));
 }
 async function pedirCertificado(c) {
