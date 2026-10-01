@@ -177,6 +177,19 @@ input[type=text]::placeholder{color:#5f6e75}
 .vb .fb{height:6px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden}
 .vb .fb i{display:block;height:100%;width:0;border-radius:99px;background:var(--accent);transition:width .25s}
 .vb.feita .fb i{background:var(--ok)}
+.vb.segurando{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.volta-agora{display:flex;align-items:baseline;gap:8px;font-size:14px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.08)}
+.volta-agora b{font-size:15px}
+.volta-agora.certo{background:color-mix(in srgb, var(--ok) 22%, transparent)}
+.volta-agora.errado{background:color-mix(in srgb, var(--warn) 20%, transparent)}
+.volta-agora span{opacity:.85;font-size:13px}
+.so-filme{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:14px}
+.sf-n{display:grid;justify-items:center;line-height:1}
+.sf-n b{font-size:34px;font-weight:700}
+.sf-n span{font-size:11px;opacity:.7;letter-spacing:.03em}
+.sf-dica{margin:0;font-size:15px;line-height:1.35}
+.g-painel.casa .g-voltas .volta-tit,.g-painel.casa .g-voltas .volta-dica,
+.g-painel.casa .g-voltas .volta-barras,.g-painel.casa .g-voltas .volta-agora{display:none}
 .g-painel{z-index:3;position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:128px minmax(0,1fr);grid-template-areas:"mapa faixas" "botoes botoes";gap:12px 14px;padding:36px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);background:linear-gradient(transparent, rgba(0,0,0,.78) 30%)}
 .g-mapa{grid-area:mapa;position:relative;width:128px;height:128px}
 .g-mapa canvas{width:100%;height:100%;display:block}
@@ -250,7 +263,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela tela-pc" id="tela-pc" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-9</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-11</span></span>
   </header>
   <div class="pc-grid">
     <div class="pc-texto">
@@ -289,7 +302,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela" id="tela-inicio" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-9</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-11</span></span>
   </header>
   <div class="inicio-hero"><canvas data-anim="contorno" aria-hidden="true"></canvas></div>
   <h1>Assistente de filmagem 3D</h1>
@@ -342,7 +355,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
   <h1>Como filmar: <span id="guia-nome"></span></h1>
   <div class="carrossel" id="carrossel-casa" hidden>
     <article class="card-guia"><canvas data-anim="contorno" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 1 de 4</span><h2>Lente aberta e luzes acesas</h2><p>Use a lente grande-angular (0.5x). Acenda todas as luzes antes de começar e não mexa nelas. Portas: ou bem abertas ou fechadas.</p></div></article>
-    <article class="card-guia"><canvas data-anim="alturas" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 2 de 4</span><h2>Três voltas, mudando a inclinação</h2><p>Em cada cômodo: 1ª volta com o celular reto na altura do peito, 2ª volta inclinando para cima (teto), 3ª volta inclinando para baixo (chão). Sempre rente à parede, apontando para dentro. A tela mostra em qual volta você está.</p></div></article>
+    <article class="card-guia"><canvas data-anim="alturas" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 2 de 4</span><h2>Só ande e filme</h2><p>Não precisa parar, não precisa contar nada: as fotos saem sozinhas enquanto você anda, e só as nítidas são guardadas. Ande rente à parede apontando para dentro, variando um pouco a inclinação — ora reto, ora para cima, ora para baixo.</p></div></article>
     <article class="card-guia"><canvas data-anim="cantos" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 3 de 4</span><h2>Portas e corredores: devagar</h2><p>Pare 2 segundos antes e 2 segundos depois de cada porta, olhando para frente. É aí que o 3D costuma quebrar. Toque em “Cheguei em…” ao entrar num cômodo novo.</p></div></article>
     <article class="card-guia"><canvas data-anim="girar" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 4 de 4</span><h2>Nunca gire parado</h2><p>É a regra que mais importa: andar é o que dá profundidade ao 3D; girar no mesmo lugar não dá nada e ainda atrapalha o alinhamento. Para virar a câmera, dê passos. Espelhos e vidros: de lado, nunca de frente.</p></div></article>
   </div>
@@ -390,6 +403,11 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
         <div class="vb" id="vb-0"><span>1 reto</span><div class="fb"><i></i></div></div>
         <div class="vb" id="vb-1"><span>2 p/ cima</span><div class="fb"><i></i></div></div>
         <div class="vb" id="vb-2"><span>3 p/ baixo</span><div class="fb"><i></i></div></div>
+      </div>
+      <div class="volta-agora" id="volta-agora"><b id="agora-txt">—</b><span id="agora-sub"></span></div>
+      <div class="so-filme" id="so-filme">
+        <div class="sf-n"><b id="sf-fotos" class="num">0</b><span>fotos boas</span></div>
+        <p class="sf-dica" id="sf-dica">Ande devagar rente à parede, apontando para dentro do cômodo.</p>
       </div>
     </div>
     <div class="g-faixas" id="g-faixas">
@@ -492,7 +510,7 @@ const CFG = {
   FOTO_NIT: 0.6,          // nitidez mínima, como fração da referência do cômodo
   FOTO_ANG: 12,           // graus girados desde a última foto para valer outra
   FOTO_INTERVALO: 900,    // ms mínimo entre fotos
-  FOTO_FORCA: 3500,       // ms: sem sensores, tira outra foto mesmo sem girar
+  FOTO_FORCA: 2200,       // ms sem nada mudar: tira assim mesmo, para não haver buraco
   FOTO_QUALIDADE: 0.9,    // qualidade do JPEG
   FOTO_AVISO: 9000,       // ms sem nenhuma foto: diz o motivo em voz alta
   VOZ: true,              // orientação falada (o iPhone não vibra pelo navegador)
@@ -1395,18 +1413,17 @@ function limparAR() {
    A foto já nasce sabendo de qual cômodo é (o último "Cheguei em…"). */
 const FOTO = { cv: null };
 function avaliarFoto(m) {
-  // Se as fotos pararam de sair, o corretor precisa saber NA HORA — é o único jeito
-  // de ele consertar (parar mais, acender a luz, apontar para onde tem desenho).
+  // MEDIDO em 1/10, no vídeo real do Fernando: quadros escolhidos SÓ por nitidez,
+  // sem nenhuma parada, alinharam 81 de 81 (100%). Parar a cada passo não acrescentava
+  // nada — só tornava a filmagem insuportável. Então a única exigência agora é a
+  // foto prestar: nítida, nem escura nem estourada, e diferente da anterior.
   avisarSemFoto(m);
-  const parado = m.gyro < CFG.FOTO_GIRO && (SEN.temMov ? accVar(300) : 0) < CFG.FOTO_ACC;
-  if (!parado) { Cap.paradoDesde = 0; return; }
-  if (!Cap.paradoDesde) Cap.paradoDesde = m.agora;
-  if (m.agora - Cap.paradoDesde < 150) return;
   if (m.escuro || m.claro || m.nit < m.nitRef * CFG.FOTO_NIT) return;
   if (m.agora - Cap.fotoUlt < CFG.FOTO_INTERVALO || Cap.fotoTirando) return;
+  // mudou o bastante desde a última? é da diferença entre os pontos de vista que nasce o 3D
   const girou = Cap.fotoHead == null || Math.abs(angDif(m.head, Cap.fotoHead)) >= CFG.FOTO_ANG || Math.abs(m.pitch - Cap.fotoPitch) >= CFG.FOTO_ANG;
   const andou = SEN.passosTot - Cap.fotoPassos >= 1;
-  const forca = !SEN.temMov && m.agora - Cap.fotoUlt > CFG.FOTO_FORCA;
+  const forca = m.agora - Cap.fotoUlt > CFG.FOTO_FORCA;
   if (girou || andou || forca) tirarFoto(m);
 }
 
@@ -1421,7 +1438,7 @@ function avisarSemFoto(m) {
   const motivo = m.escuro ? 'Está escuro aqui: acenda a luz ou abra a cortina.'
     : m.claro ? 'Muita luz na frente: não aponte para a janela.'
     : m.nit < m.nitRef * CFG.FOTO_NIT ? 'Parede lisa demais: aponte para um móvel, um quadro, um canto.'
-    : 'Pare um instante a cada passo: é na parada que a foto sai.';
+    : 'Continue andando devagar: as fotos saem sozinhas.';
   falar(motivo, true);
   toast(motivo, 4000);
 }
@@ -1442,8 +1459,9 @@ async function tirarFoto(m) {
     if (!Cap.ambientes[rot]) Cap.ambientes[rot] = Cap.ambienteAtual || ('Início · ' + comodo(S.atual).nome);
     const meta = { seq, t: r2(Cap.tVideo), ambiente: amb, direcao: r1(m.head), inclinacao: r1(m.pitch),
                    nitidez: r1(m.nit), luz: r1(m.luz), w: cv.width, h: cv.height, passos: SEN.passosTot - Cap.passosIni };
-    // pitch negativo = olhando para cima (convenção do site)
-    const vIdx = m.pitch <= -CFG.PITCH ? 1 : m.pitch >= CFG.PITCH ? 2 : 0;
+    // MEDIDO, não suposto: pitch POSITIVO = câmera apontando para CIMA,
+    // pitch NEGATIVO = câmera para BAIXO (conferido com a fórmula do onOri).
+    const vIdx = faixaDaInclinacao(m.pitch);
     Cap.fotosVolta[vIdx]++;
     Cap.fotos++; Cap.fotoUlt = m.agora; Cap.fotoHead = m.head; Cap.fotoPitch = m.pitch;
     Cap.fotoPassos = SEN.passosTot; Cap.paradoDesde = 0; Cap.bytesFotos += blob.size;
@@ -1571,12 +1589,27 @@ const VOLTAS = [
   { nome: 'Volta 2 de 3 · para cima', dica: 'Mesma volta, agora com o celular inclinado para cima, pegando a parte de cima das paredes e o teto.' },
   { nome: 'Volta 3 de 3 · para baixo', dica: 'Mesma volta, agora inclinado para baixo, pegando o chão e a parte de baixo dos móveis.' },
 ];
+// 0 = reto, 1 = câmera para cima, 2 = câmera para baixo
+function faixaDaInclinacao(pitch) { return pitch >= CFG.PITCH ? 1 : pitch <= -CFG.PITCH ? 2 : 0; }
 function voltaCompleta(i) { return Cap.fotosVolta[i] >= CFG.FOTOS_VOLTA; }
 function todasVoltas() { return [0, 1, 2].every(voltaCompleta); }
 
+// Nada aqui bloqueia o corretor. A medição de 1/10 mostrou que basta a foto ser nítida,
+// então a tela só informa: quantas fotos boas saíram e uma dica que vai mudando.
+const DICAS = [
+  'Ande devagar rente à parede, apontando para dentro do cômodo.',
+  'Agora incline um pouco o celular para cima, pegando o teto.',
+  'Agora incline um pouco para baixo, pegando o chão.',
+  'Passou por uma porta? Vá bem devagar, antes e depois.',
+  'Chegou num cômodo novo? Toque no nome dele aqui em cima.',
+];
 function atualizarVoltas() {
   const box = $('#g-voltas'); if (!box) return;
   box.hidden = false;
+  const el = $('#sf-fotos'), dc = $('#sf-dica');
+  if (el) el.textContent = Cap.fotos;
+  if (dc) dc.textContent = DICAS[Math.floor(Cap.tVideo / 25) % DICAS.length];
+  return;
   // a volta atual é a primeira que ainda não fechou
   const v = [0, 1, 2].find(i => !voltaCompleta(i));
   Cap.volta = v == null ? 2 : v;
@@ -1586,12 +1619,30 @@ function atualizarVoltas() {
     ? 'Pode terminar. Se faltou algum canto, continue andando por ele.'
     : info.dica;
   $('#volta-fotos').textContent = Cap.fotos + (Cap.fotos === 1 ? ' foto' : ' fotos');
+  // Em qual inclinação o celular está NESTE instante. Sem isto ele filma sem
+  // saber se está contando — foi a queixa "nunca sei se tá pegando certo".
+  const agora = SEN.temOri ? faixaDaInclinacao(SEN.pitch) : 0;
   for (let i = 0; i < 3; i++) {
     const el = $('#vb-' + i); if (!el) continue;
     const f = Math.min(1, Cap.fotosVolta[i] / CFG.FOTOS_VOLTA);
     el.querySelector('i').style.width = Math.round(f * 100) + '%';
     el.classList.toggle('atual', i === Cap.volta && v != null);
     el.classList.toggle('feita', voltaCompleta(i));
+    el.classList.toggle('segurando', i === agora);
+  }
+  const box2 = $('#volta-agora'), tx = $('#agora-txt'), sb = $('#agora-sub');
+  if (box2 && tx && sb) {
+    const NOMES = ['reto', 'para cima', 'para baixo'];
+    if (!SEN.temOri) {
+      box2.className = 'volta-agora'; tx.textContent = 'Sem sensor de inclinação';
+      sb.textContent = 'as fotos contam para a volta reto';
+    } else {
+      const certo = v == null || agora === Cap.volta;
+      box2.className = 'volta-agora ' + (certo ? 'certo' : 'errado');
+      tx.textContent = 'Celular: ' + NOMES[agora];
+      sb.textContent = certo ? (v == null ? 'tudo feito' : 'contando ✓')
+                             : 'esta volta é ' + NOMES[Cap.volta];
+    }
   }
   // avisa em voz quando uma volta fecha, para ele mudar a inclinação sem olhar a tela
   if (v != null && v !== Cap.voltaAvisada && Cap.fotos > 0) {
@@ -1948,7 +1999,7 @@ aoMostrar['tela-guia'] = () => {
   const c = comodo(S.atual); $('#guia-nome').textContent = c ? c.nome : '';
   const casa = modoCasa();
   $('#carrossel-casa').hidden = !casa; $('#carrossel').hidden = casa;
-  $('#guia-meta').textContent = casa ? 'Um vídeo só para o andar inteiro, sem parar de gravar. A tela vai te dizendo em qual das três voltas você está. Um apartamento leva de 5 a 8 minutos.'
+  $('#guia-meta').textContent = casa ? 'Um vídeo só para o andar inteiro, sem parar de gravar. Ande devagar e deixe o resto com o site. Um apartamento leva de 5 a 8 minutos.'
     : 'Para liberar o botão “Terminar cômodo”: 75% do mapa verde e pelo menos 60% em cada altura.';
   $(casa ? '#carrossel-casa' : '#carrossel').scrollLeft = 0; marcarPonto(0);
 };
@@ -2084,7 +2135,7 @@ aoMostrar['tela-resumo'] = () => {
     if (modoCasa()) { cv.hidden = true; return; }   // no modo casa o anel de 360° só confunde
     desenharAnel(cv, c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch });
   });
-  $('#res-nome').title = 'v20261001-9';
+  $('#res-nome').title = 'v20261001-11';
   const saida = $('#res-saida');
   saida.innerHTML = CFG.NUVEM_URL
     ? `<h2>Gerar tour 3D</h2><p>Envia o vídeo e os dados de cada cômodo filmado para o processamento. O link do tour aparece aqui quando ficar pronto.</p><button class="btn btn-pri" id="btn-enviar">Enviar para gerar o 3D</button>`
