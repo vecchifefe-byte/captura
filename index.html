@@ -1801,10 +1801,11 @@ aoMostrar['tela-revisao'] = () => {
   $('#btn-rev-prox').textContent = prox ? `Próximo: ${prox.nome}` : 'Ver resumo';
 };
 function listaProblemas(c) {
-  if (CFG.FOTOS && c.take && (c.fotos || 0) < 30 && !c.demo) {
-    // 30 fotos é o mínimo prático: abaixo disso o alinhamento costuma não fechar
-  }
   const out = [], a = c.alertas || {}, f = c.cobertura.faixas;
+  // 30 fotos é o mínimo prático: abaixo disso o alinhamento costuma não fechar.
+  // Quase sempre quer dizer que o corretor andou sem parar.
+  if (CFG.FOTOS && c.take && !c.demo && (c.fotos || 0) < 30)
+    out.push(['bad', `Só ${c.fotos || 0} fotos nesta filmagem`, 'pare um instante a cada passo: é na parada que a foto sai']);
   const nomes = { escuro: 'Trechos escuros', tremido: 'Imagem tremida', rapido: 'Giro rápido demais', girando: 'Girando parado', pulo: 'Pulos na imagem', claro: 'Luz forte / contraluz' };
   if (c.forcado) out.push(['bad', 'Terminado abaixo da meta', 'o 3D pode ter buracos nas partes vermelhas do mapa']);
   if (!c.cobertura.semPitch) f.forEach((v, i) => { if (v < CFG.META_FAIXA) out.push(['warn', `Altura ${FAIXAS[i].toLowerCase()} incompleta`, `${pct(v)} de ${pct(CFG.META_FAIXA)}`]); });
@@ -1884,7 +1885,7 @@ aoMostrar['tela-resumo'] = () => {
     return `<li class="res-item" data-id="${c.id}"><canvas aria-hidden="true"></canvas><div class="ri">
       <div class="ri-top"><b>${esc(c.nome)}</b><small class="lead num" style="font-size:13px">${c.status === 'pendente' ? '' : fmtTempo(c.duracao) + ' · ' + fmtBytes(c.bytes)}</small></div>
       <div class="chips-p">${chips}</div>${nuvem ? `<div>${nuvem}</div>` : ''}
-      <div class="ri-bot">${c.status === 'pendente' ? '<button class="btn-mini pri" data-acao="filmar">Filmar</button>' : `<button class="btn-mini" data-acao="video" disabled>Vídeo</button><button class="btn-mini" data-acao="dados" disabled>Dados JSON</button>${c.status === 'baixo' ? '<button class="btn-mini" data-acao="filmar">Refazer</button>' : ''}`}</div>
+      <div class="ri-bot">${c.status === 'pendente' ? '<button class="btn-mini pri" data-acao="filmar">Filmar</button>' : `<button class="btn-mini pri" data-acao="rever">Certificado</button><button class="btn-mini" data-acao="video" disabled>Vídeo</button><button class="btn-mini" data-acao="dados" disabled>Dados JSON</button>${c.status === 'baixo' ? '<button class="btn-mini" data-acao="filmar">Refazer</button>' : ''}`}</div>
     </div></li>`;
   }).join('');
   $$('.res-item', ul).forEach(li => { const c = comodo(li.dataset.id); desenharAnel(li.querySelector('canvas'), c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch }); });
@@ -2093,6 +2094,8 @@ function ligar() {
     const b = e.target.closest('[data-acao]'); if (!b) return;
     const id = b.closest('.res-item').dataset.id, c = comodo(id);
     if (b.dataset.acao === 'filmar') return irFilmar(id);
+    // Sem isto não havia volta do resumo para o Certificado: ele ficava inalcançável.
+    if (b.dataset.acao === 'rever') { S.atual = id; return mostrar('tela-revisao'); }
     const arq = S.arquivos.get(id); if (!arq) return toast('Preparando arquivos…');
     entregar([b.dataset.acao === 'video' ? arq.video : arq.dados]);
     void c;
