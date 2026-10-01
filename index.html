@@ -1621,7 +1621,7 @@ async function pedirCertificado(c) {
       body: JSON.stringify({ imovel: S.imovel.id, partes: partesDoComodo(c) }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    c.cert = { estado: 'processando', status_url: j.status_url, id: j.id };
+    c.cert = { estado: 'processando', status_url: j.status_url, id: j.id, desde: Date.now() };
     await salvarImovel(true); renderCert(c); acompanharCert(c);
   } catch (e) { c.cert = { estado: 'erro', mensagem: String(e.message || e) }; renderCert(c); }
 }
@@ -1630,6 +1630,7 @@ async function acompanharCert(c) {
     await sleep(8000);
     try {
       const j = await (await fetch(c.cert.status_url)).json();
+      if (j.log && j.log.length) { c.cert.passo = j.log[j.log.length - 1]; renderCert(c); }
       if (j.estado === 'pronto') {
         c.cert = { estado: 'pronto', ...(j.casa || {}) };
         await salvarImovel(true); renderCert(c);
@@ -1649,7 +1650,21 @@ function renderCert(c) {
     return;
   }
   if (!k || k.estado === 'enviando') { est.className = 'pill warn'; est.textContent = 'enviando'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Enviando as fotos… <span class="num">${ENV.ok} de ${c.fotos}</span></p>`; return; }
-  if (k.estado === 'processando') { est.className = 'pill warn'; est.textContent = 'conferindo'; corpo.innerHTML = `<p class="lead" style="font-size:14px">A nuvem está conferindo as ${c.fotos} fotos. Leva de 1 a 3 min; pode esperar aqui mesmo.</p>`; return; }
+  if (k.estado === 'processando') {
+    est.className = 'pill warn'; est.textContent = 'conferindo';
+    const seg = k.desde ? Math.round((Date.now() - k.desde) / 1000) : 0;
+    const rel = seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60}s` : `${seg}s`;
+    const demais = seg > 360;   // 6 min: passou MUITO do normal
+    corpo.innerHTML = `<p class="lead" style="font-size:14px">A nuvem está conferindo as ${c.fotos} fotos.
+        ${k.passo ? `<br><b>${esc(k.passo)}</b>` : ''}
+        <br><span class="num">${rel}</span> esperando${demais ? '' : ' · costuma levar 1 a 3 min'}</p>
+      ${demais ? `<p class="lead" style="font-size:13px;margin-top:6px">Está demorando mais do que devia.
+        Suas fotos estão salvas na nuvem, nada se perdeu. Pode tocar em tentar de novo, ou mandar
+        esta tela para o Fernando resolver.</p>
+        <button class="btn-mini" id="btn-cert-denovo2">Tentar de novo</button>` : ''}`;
+    if (demais) { const b = $('#btn-cert-denovo2'); if (b) b.onclick = () => pedirCertificado(c); }
+    return;
+  }
   if (k.estado === 'erro') { est.className = 'pill bad'; est.textContent = 'erro'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Não deu para conferir: ${esc(k.mensagem || '')}</p><button class="btn-mini" id="btn-cert-denovo">Tentar de novo</button>`; const b = $('#btn-cert-denovo'); if (b) b.onclick = () => pedirCertificado(c); return; }
   const pct2 = Math.round(100 * (k.registradas || 0) / Math.max(1, k.fotos || 1));
   const cl = k.ok && pct2 >= 85 ? 'ok' : pct2 >= 60 ? 'warn' : 'bad';
