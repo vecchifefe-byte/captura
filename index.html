@@ -102,6 +102,18 @@ input[type=text]::placeholder{color:#5f6e75}
 .comodo-status.baixo{color:var(--warn)}
 .btn-x{appearance:none;border:0;background:none;color:var(--muted);width:36px;height:40px;font-size:22px;cursor:pointer;border-radius:8px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
+.segm{display:flex;border:1px solid var(--line-2);border-radius:12px;overflow:hidden;margin:0 0 12px}.segm button{flex:1;appearance:none;border:0;background:transparent;color:var(--text);padding:10px 8px;font-size:13px;font-weight:600;cursor:pointer}.segm button.on{background:#5fb3ff;color:#000}
+.g-amb .chip.visitado{border-color:#34d399;color:#34d399}
+#g-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:5}
+#g-flash.on{animation:flash .28s ease-out}
+@keyframes flash{0%{opacity:.7}100%{opacity:0}}
+.cert-nota{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.cert-nota b{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.cert-nota strong{display:block;font-size:16px}
+.cert-nota.ok b,.cert-nota.ok strong{color:var(--ok)}
+.cert-nota.warn b,.cert-nota.warn strong{color:var(--warn)}
+.cert-nota.bad b,.cert-nota.bad strong{color:var(--bad)}
+.g-amb{grid-area:mapa;grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.g-amb .chip{border-style:solid;border-color:rgba(255,255,255,.35);color:#fff;padding:6px 10px;min-height:34px;font-size:13px}.g-amb .chip.on{background:#5fb3ff;color:#000;border-color:#5fb3ff}.g-amb small{width:100%;color:#cfd3da;font-size:12px}
 .chip{appearance:none;border:1px dashed var(--line-2);background:transparent;color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;min-height:40px}
 .add-outro{display:flex;gap:8px}
 .add-outro input{flex:1;min-width:0}
@@ -290,9 +302,11 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
     <label class="rotulo" for="nome-imovel">Imóvel</label>
     <input type="text" id="nome-imovel" placeholder="Ex.: Rua Padre Chagas, 120 – apto 302" autocomplete="off" enterkeyhint="done">
   </div>
-  <div class="secao-tit"><h2>Cômodos</h2><span id="prog-imovel" class="num"></span></div>
+  <div class="segm" id="segm-modo" role="tablist"><button data-modo="casa" class="on">Casa inteira (1 vídeo por andar)</button><button data-modo="comodos">Cômodo por cômodo</button></div>
+  <div class="secao-tit"><h2 id="tit-lista">Andares</h2><span id="prog-imovel" class="num"></span></div>
   <ul class="lista-comodos" id="lista-comodos"></ul>
-  <div class="campo">
+  <div class="campo" id="campo-andar"><span class="rotulo">Casa de mais de um andar? Um vídeo por andar.</span><div class="chips"><button class="chip" id="btn-add-andar">+ Adicionar andar</button></div></div>
+  <div class="campo" id="campo-comodos">
     <span class="rotulo">Adicionar</span>
     <div class="chips" id="chips">
       <button class="chip">Sala</button><button class="chip">Cozinha</button><button class="chip">Quarto</button><button class="chip">Banheiro</button><button class="chip">Área de serviço</button><button class="chip">Varanda</button><button class="chip">Corredor</button><button class="chip">Escritório</button>
@@ -312,6 +326,12 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
     <span class="pill" id="guia-meta-pill">Meta 75%</span>
   </header>
   <h1>Como filmar: <span id="guia-nome"></span></h1>
+  <div class="carrossel" id="carrossel-casa" hidden>
+    <article class="card-guia"><canvas data-anim="contorno" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 1 de 4</span><h2>Lente aberta e luzes acesas</h2><p>Use a lente grande-angular (0.5x). Acenda todas as luzes antes de começar e não mexa nelas. Portas: ou bem abertas ou fechadas.</p></div></article>
+    <article class="card-guia"><canvas data-anim="alturas" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 2 de 4</span><h2>Um caminho só, sem parar de gravar</h2><p>Em cada cômodo, dê duas voltas rente às paredes e cruze de canto a canto. Depois siga para o próximo cômodo. Uns 2 minutos por cômodo.</p></div></article>
+    <article class="card-guia"><canvas data-anim="cantos" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 3 de 4</span><h2>Portas e corredores: devagar</h2><p>Pare 2 segundos antes e 2 segundos depois de cada porta, olhando para frente. É aí que o 3D costuma quebrar. Toque em “Cheguei em…” ao entrar num cômodo novo.</p></div></article>
+    <article class="card-guia"><canvas data-anim="girar" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 4 de 4</span><h2>Nunca gire parado</h2><p>Para virar a câmera, dê passos. Ande devagar, na altura do peito, sem ligar a estabilização “ação”. Espelhos e vidros: de lado, nunca de frente.</p></div></article>
+  </div>
   <div class="carrossel" id="carrossel">
     <article class="card-guia"><canvas data-anim="contorno" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 1 de 4</span><h2>Contorne o cômodo devagar</h2><p>Ande rente às paredes, em passos curtos, com a câmera sempre apontada para o centro do cômodo. Uma volta leva cerca de 1 minuto.</p></div></article>
     <article class="card-guia"><canvas data-anim="alturas" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 2 de 4</span><h2>Três voltas, três alturas</h2><p>1ª volta na altura do peito, câmera reta. 2ª volta com o celular no alto, inclinado para baixo. 3ª volta na altura dos joelhos, inclinado para cima.</p></div></article>
@@ -319,7 +339,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
     <article class="card-guia"><canvas data-anim="girar" aria-hidden="true"></canvas><div class="txt"><span class="etq">Regra 4 de 4</span><h2>Nunca gire parado</h2><p>Para virar a câmera, dê passos de lado. Girar no mesmo lugar não mostra profundidade, e o app não conta esse trecho.</p></div></article>
   </div>
   <div class="pontos" id="pontos"><i class="on"></i><i></i><i></i><i></i></div>
-  <p class="guia-meta">Para liberar o botão “Terminar cômodo”: 75% do mapa verde e pelo menos 60% em cada altura.</p>
+  <p class="guia-meta" id="guia-meta">Para liberar o botão “Terminar cômodo”: 75% do mapa verde e pelo menos 60% em cada altura.</p>
   <div class="acoes">
     <button class="btn" id="btn-guia-prox">Próxima</button>
     <button class="btn btn-pri" id="btn-filmar" style="flex:2">Entendi, filmar</button>
@@ -332,7 +352,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
   <div class="g-topo">
     <span class="g-rec" id="g-rec"><i></i><b id="g-tempo" class="num">0:00</b></span>
     <span class="g-comodo" id="g-comodo"></span>
-    <span class="g-res" id="g-res">—</span>
+    <span class="g-res" id="g-fotos-box" title="Fotos guardadas">📷 <b id="g-fotos" class="num">0</b></span><span class="g-res" id="g-env" hidden></span><span class="g-res" id="g-res">—</span>
   </div>
   <div class="g-info"><p class="g-dica" id="g-dica">Prepare-se</p><span class="g-tag" id="g-tag" hidden></span></div>
   <div class="g-medidores">
@@ -345,8 +365,10 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
   <div class="g-seta g-seta-dir" id="seta-dir" hidden>›<small>vire</small></div>
   <div class="g-aviso" id="g-aviso" hidden role="alert"><strong id="g-aviso-tit"></strong><span id="g-aviso-sub"></span></div>
   <div class="g-painel">
-    <div class="g-mapa"><canvas id="anel" aria-label="Mapa de cobertura"></canvas><div class="g-pct"><b id="g-pct">0%</b><span>cobertura</span></div></div>
-    <div class="g-faixas">
+    <div class="g-amb" id="g-amb" hidden><small>Cheguei em… (toque ao entrar num cômodo novo)</small></div>
+        <div id="g-flash" aria-hidden="true"></div>
+    <div class="g-mapa" id="g-mapa"><canvas id="anel" aria-label="Mapa de cobertura"></canvas><div class="g-pct"><b id="g-pct">0%</b><span>cobertura</span></div></div>
+    <div class="g-faixas" id="g-faixas">
       <div class="faixa" id="f-0"><span>Alto</span><div class="fb"><i></i></div><b class="num">0%</b></div>
       <div class="faixa" id="f-1"><span>Meio</span><div class="fb"><i></i></div><b class="num">0%</b></div>
       <div class="faixa" id="f-2"><span>Baixo</span><div class="fb"><i></i></div><b class="num">0%</b></div>
@@ -384,6 +406,10 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
     <figure><canvas id="rev-traj"></canvas><figcaption>Trajeto estimado pelos passos</figcaption></figure>
   </div>
   <dl class="nums" id="rev-nums"></dl>
+  <section class="cartao" id="rev-cert" hidden>
+    <div class="secao-tit"><h2>Certificado de Captura</h2><span id="cert-estado"></span></div>
+    <div id="cert-corpo"></div>
+  </section>
   <h2>O que aconteceu</h2>
   <ul class="probs" id="rev-probs"></ul>
   <div>
@@ -435,6 +461,18 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
    ===================================================================== */
 const CFG = {
   NUVEM_URL: 'https://vecchifefe--tour3d-web.modal.run/enviar',
+  CERT_URL: '',           // servidor do Certificado de Captura; ligue com ?cert=URL no endereço (?cert=off desliga)
+  FOTOS: true,            // "mova e pare": tira foto sozinho quando você para de andar
+  FOTO_GIRO: 9,           // °/s: abaixo disso conta como parado
+  FOTO_ACC: 0.12,         // variância da aceleração (janela curta) máxima para "parado"
+  FOTO_NIT: 0.6,          // nitidez mínima, como fração da referência do cômodo
+  FOTO_ANG: 12,           // graus girados desde a última foto para valer outra
+  FOTO_INTERVALO: 900,    // ms mínimo entre fotos
+  FOTO_FORCA: 3500,       // ms: sem sensores, tira outra foto mesmo sem girar
+  FOTO_QUALIDADE: 0.9,    // qualidade do JPEG
+  FOTO_AVISO: 9000,       // ms sem nenhuma foto: diz o motivo em voz alta
+  VOZ: true,              // orientação falada (o iPhone não vibra pelo navegador)
+  IMOBILIARIA: '',        // código da imobiliária cadastrada no servidor (imobiliarias.json); vazio = padrão
   MARCA: '',              // nome da imobiliária que aparece no tour (ex.: 'Imobiliária Vecchi')
   WHATSAPP: '',           // número do botão "Agendar visita", só dígitos com DDI+DDD (ex.: '5521999998888')
   META_TOTAL: 0.75,       // cobertura mínima total
@@ -452,7 +490,9 @@ const CFG = {
   ACC_VAR: 0.18,          // variância da aceleração que indica caminhada
   PASSO: 0.55,            // m/s² acima da média para contar um passo
   FOV_H: 50,              // campo de visão horizontal estimado (retrato), graus
-  VIDEO_BPS: 6000000,     // 6 Mbps: ~45 MB/min, qualidade de sobra para o 3D
+  VIDEO_BPS: 8000000,     // 8 Mbps: ~60 MB/min; a lente aberta pega mais detalhe por quadro
+  MIN_ANDAR_S: 60,        // segundos mínimos de vídeo para terminar um andar no modo casa inteira
+  AMBIENTES: ['Sala', 'Cozinha', 'Quarto', 'Suíte', 'Banheiro', 'Corredor', 'Área de serviço', 'Varanda', 'Escritório', 'Churrasqueira', 'Pátio', 'Garagem'],
 };
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -476,6 +516,20 @@ const ehIOS = /iPhone|iPad|iPod/.test(UA) || (navigator.maxTouchPoints > 1 && /M
 const ehCelular = ehIOS || /Android|Mobile/i.test(UA);
 const reduzMov = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FAIXAS = ['Alto', 'Meio', 'Baixo'];
+const SOM = { ctx: null };
+function somInit() { try { if (!SOM.ctx) SOM.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (SOM.ctx.state === 'suspended') SOM.ctx.resume(); } catch (e) {} }
+function bip(freq = 880, ms = 70, vol = .25) {
+  try { somInit(); const c = SOM.ctx; if (!c) return; const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(c.destination);
+    const t = c.currentTime; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + ms / 1000);
+    o.start(t); o.stop(t + ms / 1000 + .02); } catch (e) {}
+}
+let vozUlt = 0;
+function falar(txt, prioridade = false) {
+  if (!CFG.VOZ || !window.speechSynthesis) return;
+  const agora = performance.now(); if (!prioridade && agora - vozUlt < 4000) return;
+  try { if (prioridade) speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; u.rate = 1.05; speechSynthesis.speak(u); vozUlt = agora; } catch (e) {}
+}
 const vibrar = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
 let COR = {};
@@ -489,13 +543,16 @@ function lerCores() {
    ===================================================================== */
 const DB = (() => {
   let db = null;
-  const mem = { meta: new Map(), chunks: [], logs: new Map() };
+  const mem = { meta: new Map(), chunks: [], logs: new Map(), fotos: [] };
   async function abrir() {
     try {
       db = await new Promise((res, rej) => {
-        const r = indexedDB.open('captura3d', 1);
+        const r = indexedDB.open('captura3d', 2);
         r.onupgradeneeded = () => {
           const d = r.result;
+          const tem = k => d.objectStoreNames.contains(k);
+          if (!tem('fotos')) d.createObjectStore('fotos', { autoIncrement: true }).createIndex('take', 'take');
+          if (tem('meta')) return;
           d.createObjectStore('meta');
           d.createObjectStore('chunks', { autoIncrement: true }).createIndex('take', 'take');
           d.createObjectStore('logs');
@@ -523,6 +580,13 @@ const DB = (() => {
     persistente: () => !!db,
     get: k => db ? tx('meta', 'readonly', s => s.get(k)) : Promise.resolve(mem.meta.get(k)),
     put: (k, v) => db ? tx('meta', 'readwrite', s => s.put(v, k)) : (mem.meta.set(k, v), Promise.resolve()),
+    addFoto: (take, seq, blob, meta) => db ? tx('fotos', 'readwrite', s => s.add({ take, seq, blob, meta })) : (mem.fotos.push({ take, seq, blob, meta }), Promise.resolve()),
+    async fotos(take) {
+      if (!take) return [];
+      if (!db) return mem.fotos.filter(f => f.take === take).sort((a, b) => a.seq - b.seq);
+      const arr = await tx('fotos', 'readonly', s => s.index('take').getAll(take));
+      return (arr || []).sort((a, b) => a.seq - b.seq);
+    },
     addChunk: (take, seq, blob) => db ? tx('chunks', 'readwrite', s => s.add({ take, seq, blob })) : (mem.chunks.push({ take, seq, blob }), Promise.resolve()),
     async chunks(take) {
       if (!take) return [];
@@ -530,7 +594,18 @@ const DB = (() => {
       const arr = await tx('chunks', 'readonly', s => s.index('take').getAll(take));
       return (arr || []).sort((a, b) => a.seq - b.seq).map(c => c.blob);
     },
+    async apagarFotos(take) {
+      if (!take) return;
+      if (!db) { mem.fotos = mem.fotos.filter(f => f.take !== take); return; }
+      await new Promise((res, rej) => {
+        const t = db.transaction('fotos', 'readwrite');
+        const cur = t.objectStore('fotos').index('take').openCursor(IDBKeyRange.only(take));
+        cur.onsuccess = () => { const c = cur.result; if (c) { c.delete(); c.continue(); } };
+        t.oncomplete = res; t.onerror = () => rej(t.error);
+      });
+    },
     async apagarTake(take) {
+      await this.apagarFotos(take).catch(() => {});
       if (!take) return;
       if (!db) { mem.chunks = mem.chunks.filter(c => c.take !== take); mem.logs.delete(take); return; }
       await new Promise((res, rej) => {
@@ -551,13 +626,15 @@ const DB = (() => {
    ===================================================================== */
 const S = { imovel: null, atual: null, demo: false, arquivos: new Map() };
 
-function novoImovel(nome = '') {
+function novoImovel(nome = '', modo = 'casa') {
   return {
-    id: uid(), nome, criado: new Date().toISOString(),
-    comodos: ['Sala', 'Cozinha', 'Quarto 1', 'Banheiro'].map(n => ({ id: uid(), nome: n, status: 'pendente' })),
+    id: uid(), nome, criado: new Date().toISOString(), modo,
+    comodos: modo === 'casa' ? [{ id: uid(), nome: 'Andar 1', status: 'pendente', tipo: 'andar' }]
+      : ['Sala', 'Cozinha', 'Quarto 1', 'Banheiro'].map(n => ({ id: uid(), nome: n, status: 'pendente' })),
   };
 }
 const comodo = id => S.imovel.comodos.find(c => c.id === id);
+const modoCasa = () => (S.imovel && S.imovel.modo) === 'casa';
 const proximoPendente = (excetoId) => S.imovel.comodos.find(c => c.status === 'pendente' && c.id !== excetoId);
 let salvarTimer = null;
 function salvarImovel(ja) {
@@ -834,8 +911,9 @@ function registrarAcel(mag, t) {
   while (SEN.hist.length && t - SEN.hist[0][0] > 1500) SEN.hist.shift();
   while (SEN.passos.length && t - SEN.passos[0] > 6000) SEN.passos.shift();
 }
-function accVar() {
-  const h = SEN.hist; if (h.length < 5) return 0;
+function accVar(janelaMs = 1500) {
+  let h = SEN.hist; if (h.length < 5) return 0;
+  if (janelaMs < 1500) { const t = h[h.length - 1][0]; h = h.filter(x => t - x[0] <= janelaMs); if (h.length < 4) return 0; }
   const m = media(h.map(x => x[1])); return media(h.map(x => (x[1] - m) ** 2));
 }
 function pedirSensores() {
@@ -864,13 +942,37 @@ async function abrirCamera() {
     if (e.name === 'OverconstrainedError' || e.name === 'ConstraintNotSatisfiedError') st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     else throw e;
   }
-  const tr = st.getVideoTracks()[0];
-  try { const cap = tr.getCapabilities ? tr.getCapabilities() : {}; if (cap.focusMode && cap.focusMode.includes('continuous')) await tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+  let tr = st.getVideoTracks()[0];
+  // lente grande-angular (0.5x): 1) câmera com nome "ultra wide" (iPhone e alguns Android); 2) zoom abaixo de 1x
+  CAM.lente = 'normal';
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const ultra = devs.find(d => /ultra|wide|grande|0[.,]5/i.test(d.label) && !/front|frontal|tele/i.test(d.label));
+    if (ultra && ultra.deviceId !== (tr.getSettings().deviceId || '')) {
+      const st2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ultra.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
+      st.getTracks().forEach(t => t.stop()); st = st2; tr = st.getVideoTracks()[0]; CAM.lente = 'ultra';
+    }
+  } catch (e) {}
+  try {
+    const cap = tr.getCapabilities ? tr.getCapabilities() : {};
+    if (CAM.lente !== 'ultra' && cap.zoom && cap.zoom.min < 1) { await tr.applyConstraints({ advanced: [{ zoom: cap.zoom.min }] }); CAM.lente = 'zoom'; }
+    if (cap.focusMode && cap.focusMode.includes('continuous')) await tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+  } catch (e) {}
   const s = tr.getSettings ? tr.getSettings() : {};
   const lado = Math.min(s.width || 0, s.height || 0);
   CAM.info = { w: s.width || 0, h: s.height || 0, fps: Math.round(s.frameRate || 30), rotulo: lado >= 2160 ? '4K' : lado >= 1080 ? '1080p' : lado ? lado + 'p' : '—' };
   CAM.stream = st;
   return st;
+}
+async function travarBrilho() {
+  // brilho e cor travados durante a gravação: a mudança de exposição entre cômodos borra o 3D (só onde o celular deixa)
+  try {
+    const tr = CAM.stream && CAM.stream.getVideoTracks()[0]; if (!tr || !tr.getCapabilities) return;
+    const cap = tr.getCapabilities(), adv = [];
+    if (cap.exposureMode && cap.exposureMode.includes('manual')) adv.push({ exposureMode: 'manual' });
+    if (cap.whiteBalanceMode && cap.whiteBalanceMode.includes('manual')) adv.push({ whiteBalanceMode: 'manual' });
+    if (adv.length) { await tr.applyConstraints({ advanced: adv }); CAM.brilhoTravado = true; }
+  } catch (e) {}
 }
 function fecharCamera() {
   if (CAM.stream) CAM.stream.getTracks().forEach(t => t.stop());
@@ -1056,6 +1158,8 @@ function zerarCap() {
     cel: [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), amostras: [], alertas: {}, giros: 0,
     passosIni: SEN.passosTot, passosVistos: SEN.passosTot, traj: [[0, 0]], pos: [0, 0], giroHist: [],
     aviso: { atual: null, desde: 0, cand: null, candN: 0, ausente: 0, ultVib: 0 }, iniciado: null,
+    fotos: 0, fotoSeq: 0, fotoUlt: 0, fotoHead: null, fotoPitch: 0, fotoPassos: 0, paradoDesde: 0,
+    fotoTirando: false, bytesFotos: 0, ambienteAtual: '', ambientes: {},
   });
   AN.prev = null; AN.nitHist = []; AN.parHist = [];
 }
@@ -1121,6 +1225,17 @@ async function iniciarCaptura() {
   Cap.h0 = SEN.temOri ? SEN.heading : 0; Cap.headImg = 0; Cap.headAnt = null;
   Cap.passosIni = Cap.passosVistos = SEN.passosTot;
   if (!iniciarGravador()) return;
+  somInit();
+  Cap.marcadores = {};
+  $('#g-fotos').textContent = '0'; $('#g-flash').className = ''; atualizarEnvioUI();
+  const casa = modoCasa();
+  $('#g-amb').hidden = !casa; $('#g-mapa').hidden = casa; $('#g-faixas').hidden = casa;
+  if (casa) {
+    const amb = $('#g-amb'); $$('.chip', amb).forEach(x => x.remove());
+    CFG.AMBIENTES.forEach(n => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n; amb.appendChild(b); });
+    $('#btn-terminar').textContent = 'Terminar andar'; $('#btn-pausa-terminar').textContent = 'Terminar andar';
+  } else { $('#btn-terminar').textContent = 'Terminar cômodo'; }
+  travarBrilho();
   Cap.estado = 'gravando'; Cap.tUlt = performance.now(); Cap.iniciado = new Date().toISOString();
   $('#g-rec').classList.add('on');
   vibrar(40);
@@ -1160,6 +1275,106 @@ function iniciarGravador() {
   const tr = CAM.stream.getVideoTracks()[0];
   if (tr) tr.onended = () => { if (Cap.estado === 'gravando' || Cap.estado === 'pausado') { toast('A câmera foi interrompida', 4000); pausar(); } };
   return true;
+}
+
+/* ---------- fotos automáticas: "mova e pare" ----------
+   O corretor anda normalmente. Quando para um instante e a imagem está limpa,
+   o site guarda uma foto em alta resolução e manda para o Certificado.
+   A foto já nasce sabendo de qual cômodo é (o último "Cheguei em…"). */
+const FOTO = { cv: null };
+function avaliarFoto(m) {
+  // Se as fotos pararam de sair, o corretor precisa saber NA HORA — é o único jeito
+  // de ele consertar (parar mais, acender a luz, apontar para onde tem desenho).
+  avisarSemFoto(m);
+  const parado = m.gyro < CFG.FOTO_GIRO && (SEN.temMov ? accVar(300) : 0) < CFG.FOTO_ACC;
+  if (!parado) { Cap.paradoDesde = 0; return; }
+  if (!Cap.paradoDesde) Cap.paradoDesde = m.agora;
+  if (m.agora - Cap.paradoDesde < 150) return;
+  if (m.escuro || m.claro || m.nit < m.nitRef * CFG.FOTO_NIT) return;
+  if (m.agora - Cap.fotoUlt < CFG.FOTO_INTERVALO || Cap.fotoTirando) return;
+  const girou = Cap.fotoHead == null || Math.abs(angDif(m.head, Cap.fotoHead)) >= CFG.FOTO_ANG || Math.abs(m.pitch - Cap.fotoPitch) >= CFG.FOTO_ANG;
+  const andou = SEN.passosTot - Cap.fotoPassos >= 1;
+  const forca = !SEN.temMov && m.agora - Cap.fotoUlt > CFG.FOTO_FORCA;
+  if (girou || andou || forca) tirarFoto(m);
+}
+
+/* Fotos pararam de sair: diz o motivo em voz alta, no máximo a cada FOTO_AVISO ms.
+   Escuro e sem textura são os dois casos reais (parede branca lisa, cômodo sem luz). */
+function avisarSemFoto(m) {
+  if (!Cap.fotoUlt) Cap.fotoUlt = m.agora;          // começa a contar na 1ª avaliação
+  const quieto = m.agora - Cap.fotoUlt;
+  if (quieto < CFG.FOTO_AVISO) return;
+  if (m.agora - (Cap.fotoAvisoUlt || 0) < CFG.FOTO_AVISO) return;
+  Cap.fotoAvisoUlt = m.agora;
+  const motivo = m.escuro ? 'Está escuro aqui: acenda a luz ou abra a cortina.'
+    : m.claro ? 'Muita luz na frente: não aponte para a janela.'
+    : m.nit < m.nitRef * CFG.FOTO_NIT ? 'Parede lisa demais: aponte para um móvel, um quadro, um canto.'
+    : 'Pare um instante a cada passo: é na parada que a foto sai.';
+  falar(motivo, true);
+  toast(motivo, 4000);
+}
+async function tirarFoto(m) {
+  const video = $('#video'); if (!video.videoWidth || Cap.estado !== 'gravando') return;
+  Cap.fotoTirando = true;
+  try {
+    const cv = FOTO.cv || (FOTO.cv = document.createElement('canvas'));
+    if (cv.width !== video.videoWidth || cv.height !== video.videoHeight) { cv.width = video.videoWidth; cv.height = video.videoHeight; }
+    cv.getContext('2d').drawImage(video, 0, 0);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', CFG.FOTO_QUALIDADE));
+    if (!blob || Cap.estado !== 'gravando') return;
+    const seq = Cap.fotoSeq++, take = Cap.take;
+    const amb = Cap.ambienteAtual || 'sem-nome';
+    const meta = { seq, t: r2(Cap.tVideo), ambiente: amb, direcao: r1(m.head), inclinacao: r1(m.pitch),
+                   nitidez: r1(m.nit), luz: r1(m.luz), w: cv.width, h: cv.height, passos: SEN.passosTot - Cap.passosIni };
+    Cap.fotos++; Cap.fotoUlt = m.agora; Cap.fotoHead = m.head; Cap.fotoPitch = m.pitch;
+    Cap.fotoPassos = SEN.passosTot; Cap.paradoDesde = 0; Cap.bytesFotos += blob.size;
+    Cap.fila = Cap.fila.then(() => DB.addFoto(take, seq, blob, meta)).catch(() => {
+      if (!Cap.erroGravar) { Cap.erroGravar = true; toast('Armazenamento do aparelho cheio: termine este andar', 5000); }
+    });
+    if (CFG.CERT_URL && (!S.demo || S.envioDemo)) enfileirarEnvio({ take, seq, blob, meta, comodo: slug(amb) });
+    bip(880, 60); vibrar(30);
+    const fl = $('#g-flash'); fl.className = ''; void fl.offsetWidth; fl.className = 'on';
+    $('#g-fotos').textContent = Cap.fotos;
+    if (Cap.fotos === 1) falar('Primeira foto. Continue: ande e pare, ande e pare.', true);
+    else if (Cap.fotos % 30 === 0) falar(Cap.fotos + ' fotos');
+  } finally { Cap.fotoTirando = false; }
+}
+
+/* ---------- envio contínuo das fotos ---------- */
+const ENV = { fila: [], ativos: 0, ok: 0, erros: 0, max: 2 };
+function enfileirarEnvio(item) { ENV.fila.push(item); bombearEnvio(); }
+function bombearEnvio() {
+  while (ENV.ativos < ENV.max && ENV.fila.length) {
+    const it = ENV.fila.shift(); ENV.ativos++;
+    enviarFoto(it).then(() => { ENV.ok++; },
+      () => { it.tent = (it.tent || 0) + 1; if (it.tent < 4) setTimeout(() => { ENV.fila.push(it); bombearEnvio(); }, 3000 * it.tent); else ENV.erros++; })
+      .finally(() => { ENV.ativos--; atualizarEnvioUI(); bombearEnvio(); });
+  }
+  atualizarEnvioUI();
+}
+async function enviarFoto(it) {
+  const fd = new FormData();
+  fd.append('imovel', S.imovel.id); fd.append('comodo', it.comodo || 'sem-nome');
+  fd.append('take', it.take); fd.append('seq', String(it.seq)); fd.append('meta', JSON.stringify(it.meta));
+  fd.append('foto', it.blob, `q${String(it.seq).padStart(5, '0')}.jpg`);
+  const r = await fetch(CFG.CERT_URL + '/foto', { method: 'POST', body: fd });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+function atualizarEnvioUI() {
+  const el = $('#g-env'); if (!el) return;
+  el.hidden = !CFG.CERT_URL || (S.demo && !S.envioDemo);
+  const pend = ENV.fila.length + ENV.ativos;
+  el.textContent = `↑ ${ENV.ok}${pend ? ' · ' + pend : ''}${ENV.erros ? ' · ' + ENV.erros + ' falhou' : ''}`;
+}
+function envioTerminado(limiteMs = 180000) {
+  const t0 = Date.now();
+  return new Promise(res => { const chk = () => (ENV.fila.length || ENV.ativos) && Date.now() - t0 < limiteMs ? setTimeout(chk, 300) : res(); chk(); });
+}
+function reenviarFotosPendentes(c) {
+  return DB.fotos(c.take).then(fs => {
+    fs.forEach(f => enfileirarEnvio({ take: c.take, seq: f.seq, blob: f.blob, meta: f.meta, comodo: slug((f.meta && f.meta.ambiente) || 'sem-nome') }));
+    return envioTerminado(600000);
+  });
 }
 
 function tick() {
@@ -1206,6 +1421,7 @@ function tick() {
   if (Cap.estado === 'calibrando') return;
 
   Cap.tVideo += dt;
+  if (CFG.FOTOS) avaliarFoto({ agora, gyro, aVar, nit, nitRef, head, pitch, luz, escuro, claro });
   if (boa) {
     Cap.cel[faixa][setor] += dt;
     Cap.cel[faixa][(setor + 1) % CFG.SETORES] += dt * .5;
@@ -1268,6 +1484,19 @@ function atualizarPainel(cob, faixa, rel = 0, andando = true, aviso = null) {
     el.querySelector('b').textContent = des ? '—' : pct(v);
   });
   const bt = $('#btn-terminar');
+  if (modoCasa()) {
+    const ok = Cap.tVideo >= CFG.MIN_ANDAR_S;
+    bt.dataset.ok = ok ? '1' : '0';
+    bt.textContent = ok ? '✓ Terminar andar' : `Terminar · ${fmtTempo(CFG.MIN_ANDAR_S - Cap.tVideo)}`;
+    if (Cap.estado !== 'gravando') return;
+    const dica = $('#g-dica');
+    let txt = 'Ande devagar. Duas voltas por cômodo, pare nas portas.';
+    if (!andando && Cap.yaw < 5 && Cap.tVideo > 4) txt = 'Ande devagar, rente às paredes, câmera para o centro';
+    else if (Cap.tVideo > 20 && Cap.tVideo % 60 < 8) txt = 'Chegou num cômodo novo? Toque no nome dele.';
+    dica.textContent = txt; dica.classList.toggle('destaque', false);
+    $('#seta-esq').hidden = true; $('#seta-dir').hidden = true;
+    return;
+  }
   bt.dataset.ok = cob.ok ? '1' : '0';
   bt.textContent = cob.ok ? '✓ Terminar cômodo' : cob.total < CFG.META_TOTAL ? `Terminar · faltam ${Math.max(1, Math.round((CFG.META_TOTAL - cob.total) * 100))}%` : 'Terminar · faltam alturas';
   if (Cap.estado !== 'gravando') return;
@@ -1326,7 +1555,7 @@ function pausar() {
   $('#g-rec').classList.remove('on'); $('#g-aviso').hidden = true; Cap.aviso.atual = null;
   const cob = calcCobertura(Cap.cel, semPitch());
   $('#pausa-info').textContent = `${fmtTempo(Cap.tVideo)} gravados · cobertura ${pct(cob.total)}`;
-  $('#btn-pausa-terminar').textContent = cob.ok ? 'Terminar cômodo' : 'Terminar mesmo assim';
+  $('#btn-pausa-terminar').textContent = modoCasa() ? (Cap.tVideo >= CFG.MIN_ANDAR_S ? 'Terminar andar' : 'Terminar mesmo assim') : cob.ok ? 'Terminar cômodo' : 'Terminar mesmo assim';
   $('#g-pausa').hidden = false;
 }
 function continuar() {
@@ -1360,7 +1589,10 @@ async function encerrarCaptura(modo) {
   }
   const antigo = c.take;
   const cob = calcCobertura(Cap.cel, semPitch());
+  if (modoCasa()) { const ok = Cap.tVideo >= CFG.MIN_ANDAR_S; Object.assign(cob, { total: ok ? 1 : Cap.tVideo / CFG.MIN_ANDAR_S, faixas: [1, 1, 1], ok }); }
   Object.assign(c, {
+    marcadores: { ...(Cap.marcadores || {}) }, lente: CAM.lente || 'normal', brilho_travado: !!CAM.brilhoTravado,
+    fotos: Cap.fotos, bytesFotos: Cap.bytesFotos, ambientes: { ...(Cap.ambientes || {}) }, cert: null,
     status: cob.ok ? 'ok' : 'baixo', take: Cap.take, mime: Cap.mime, ext: extDe(Cap.mime), bytes: Cap.bytes,
     duracao: r1(Cap.tVideo), cobertura: { total: r2(cob.total), faixas: cob.faixas.map(r2), ok: cob.ok, semPitch: cob.semPitch },
     alertas: Object.fromEntries(Object.entries(Cap.alertas).map(([k, v]) => [k, r1(v)])), giros: Cap.giros,
@@ -1372,6 +1604,61 @@ async function encerrarCaptura(modo) {
   S.arquivos.delete(c.id);
   await salvarImovel(true);
   mostrar('tela-revisao');
+  if (CFG.CERT_URL && (!S.demo || S.envioDemo) && c.fotos) pedirCertificado(c);
+}
+
+/* ---------- Certificado de Captura: a nuvem confere antes de você ir embora ---------- */
+function partesDoComodo(c) {
+  const amb = c.ambientes && Object.keys(c.ambientes).length ? c.ambientes : { 'sem-nome': c.nome };
+  return Object.entries(amb).map(([rot, nome]) => ({ rotulo: rot, nome, tipo: 'comodo', comodo: rot, take: c.take }));
+}
+async function pedirCertificado(c) {
+  c.cert = { estado: 'enviando' }; renderCert(c);
+  try {
+    await envioTerminado();
+    if (ENV.erros) { ENV.erros = 0; await reenviarFotosPendentes(c); }
+    const r = await fetch(CFG.CERT_URL + '/casa', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imovel: S.imovel.id, partes: partesDoComodo(c) }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    c.cert = { estado: 'processando', status_url: j.status_url, id: j.id };
+    await salvarImovel(true); renderCert(c); acompanharCert(c);
+  } catch (e) { c.cert = { estado: 'erro', mensagem: String(e.message || e) }; renderCert(c); }
+}
+async function acompanharCert(c) {
+  while (c.cert && c.cert.estado === 'processando') {
+    await sleep(8000);
+    try {
+      const j = await (await fetch(c.cert.status_url)).json();
+      if (j.estado === 'pronto') {
+        c.cert = { estado: 'pronto', ...(j.casa || {}) };
+        await salvarImovel(true); renderCert(c);
+        if (S.atual === c.id && !$('#tela-revisao').hidden) falar(c.cert.ok ? 'Captura aprovada.' : 'Falta corrigir. Veja a tela.', true);
+      } else if (j.estado === 'erro') { c.cert = { estado: 'erro', mensagem: j.mensagem || 'erro no servidor' }; renderCert(c); }
+    } catch (e) {}
+  }
+}
+function renderCert(c) {
+  const box = $('#rev-cert'), est = $('#cert-estado'), corpo = $('#cert-corpo');
+  if (!box || S.atual !== c.id) return;
+  box.hidden = false;
+  const k = c.cert;
+  if (!CFG.CERT_URL || (S.demo && !S.envioDemo) || !c.fotos) {
+    est.className = 'pill'; est.textContent = 'sem servidor';
+    corpo.innerHTML = `<p class="lead" style="font-size:14px">${c.fotos || 0} fotos guardadas no aparelho (${fmtBytes(c.bytesFotos)}). Com o servidor do certificado ligado, aqui aparece em 1–3 min se os dados bastam para o 3D e o que falta corrigir.</p>`;
+    return;
+  }
+  if (!k || k.estado === 'enviando') { est.className = 'pill warn'; est.textContent = 'enviando'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Enviando as fotos… <span class="num">${ENV.ok} de ${c.fotos}</span></p>`; return; }
+  if (k.estado === 'processando') { est.className = 'pill warn'; est.textContent = 'conferindo'; corpo.innerHTML = `<p class="lead" style="font-size:14px">A nuvem está conferindo as ${c.fotos} fotos. Leva de 1 a 3 min; pode esperar aqui mesmo.</p>`; return; }
+  if (k.estado === 'erro') { est.className = 'pill bad'; est.textContent = 'erro'; corpo.innerHTML = `<p class="lead" style="font-size:14px">Não deu para conferir: ${esc(k.mensagem || '')}</p><button class="btn-mini" id="btn-cert-denovo">Tentar de novo</button>`; const b = $('#btn-cert-denovo'); if (b) b.onclick = () => pedirCertificado(c); return; }
+  const pct2 = Math.round(100 * (k.registradas || 0) / Math.max(1, k.fotos || 1));
+  const cl = k.ok && pct2 >= 85 ? 'ok' : pct2 >= 60 ? 'warn' : 'bad';
+  est.className = 'pill ' + cl; est.textContent = k.ok ? 'aprovado' : 'corrigir';
+  const partes = Object.values(k.partes || {});
+  corpo.innerHTML = `<div class="cert-nota ${cl}"><b>${pct2}%</b><div><strong>${esc(k.veredito || '')}</strong><p class="lead" style="font-size:13px">${k.registradas || 0} de ${k.fotos || 0} fotos encaixaram num modelo só</p></div></div>
+    ${partes.length ? `<div class="chips" style="margin-top:8px">${partes.map(p => `<span class="pill ${p.fracao >= 0.7 ? 'ok' : p.fracao >= 0.25 ? 'warn' : 'bad'}">${esc(p.nome)} ${Math.round(p.fracao * 100)}%</span>`).join('')}</div>` : ''}
+    <ul class="probs" style="margin-top:10px">${(k.problemas || []).map(p => `<li class="warn"><span>${esc(p)}</span></li>`).join('') || '<li class="ok"><span>Nada a corrigir. Pode gerar o 3D.</span></li>'}</ul>
+    ${k.ok ? '' : '<p class="lead" style="font-size:13px;margin-top:8px">Toque em “Filmar mais” e refaça só o que está apontado: as fotos novas se juntam às que já estão na nuvem.</p>'}`;
 }
 
 function montarJSON(c) {
@@ -1379,7 +1666,8 @@ function montarJSON(c) {
     formato: 'captura3d/1',
     gerado_em: new Date().toISOString(),
     imovel: { id: S.imovel.id, nome: S.imovel.nome || '' },
-    comodo: { id: c.id, nome: c.nome },
+    comodo: { id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} },
+    lente: c.lente || 'normal', brilho_travado: !!c.brilho_travado,
     video: { arquivo: nomeArquivo(c, c.ext), mime: c.mime, largura: c.video.w || null, altura: c.video.h || null, fps: c.video.fps || null, bitrate_alvo: CFG.VIDEO_BPS, duracao_s: c.duracao, iniciado_em: c.gravado },
     aparelho: { user_agent: UA, tela: [screen.width, screen.height, devicePixelRatio], sensores: { orientacao: SEN.temOri, movimento: SEN.temMov }, modo: S.demo ? 'demonstracao' : SEN.temOri ? 'sensores+imagem' : 'somente_imagem' },
     calibracao: { direcao_inicial_graus: r1(Cap.h0), obs: 'direcao_rel = (direcao - direcao_inicial) mod 360' },
@@ -1397,12 +1685,17 @@ const nomeArquivo = (c, ext) => `${slug(S.imovel.nome)}_${slug(c.nome)}.${ext}`;
    TELAS
    ===================================================================== */
 function statusTxt(c) {
+  if (c.tipo === 'andar' && c.status !== 'pendente') return c.status === 'ok' ? `✓ Filmado · ${fmtTempo(c.duracao)}` : `Curto · ${fmtTempo(c.duracao)}`;
   if (c.status === 'ok') return `✓ Filmado · ${pct(c.cobertura.total)}`;
   if (c.status === 'baixo') return `Cobertura baixa · ${pct(c.cobertura.total)}`;
   return 'A filmar';
 }
 aoMostrar['tela-imovel'] = () => {
   $('#nome-imovel').value = S.imovel.nome || '';
+  const casa = modoCasa();
+  $$('#segm-modo button').forEach(b => b.classList.toggle('on', (b.dataset.modo === 'casa') === casa));
+  $('#tit-lista').textContent = casa ? 'Andares' : 'Cômodos';
+  $('#campo-andar').hidden = !casa; $('#campo-comodos').hidden = casa;
   const ul = $('#lista-comodos');
   ul.innerHTML = S.imovel.comodos.map(c => `<li class="comodo" data-id="${c.id}">
       <canvas aria-hidden="true"></canvas>
@@ -1412,7 +1705,7 @@ aoMostrar['tela-imovel'] = () => {
     || '<li class="cartao"><small class="lead" style="font-size:14px">Nenhum cômodo. Adicione abaixo.</small></li>';
   $$('.comodo', ul).forEach(li => { const c = comodo(li.dataset.id); desenharAnel(li.querySelector('canvas'), c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch }); });
   const feitos = S.imovel.comodos.filter(c => c.status !== 'pendente').length;
-  $('#prog-imovel').textContent = `${feitos} de ${S.imovel.comodos.length} filmados`;
+  $('#prog-imovel').textContent = `${feitos} de ${S.imovel.comodos.length} filmado${S.imovel.comodos.length === 1 ? '' : 's'}`;
   const prox = proximoPendente();
   const bp = $('#btn-proximo');
   bp.textContent = prox ? `Filmar: ${prox.nome}` : 'Ver resumo';
@@ -1443,10 +1736,26 @@ async function removerComodo(id) {
   salvarImovel(); aoMostrar['tela-imovel']();
 }
 function irFilmar(id) { S.atual = id; mostrar('tela-guia'); }
+function trocarModo(modo) {
+  if ((S.imovel.modo || 'comodos') === modo) return;
+  const temVideo = S.imovel.comodos.some(c => c.take);
+  const troca = () => { const nome = S.imovel.nome; S.imovel = novoImovel(nome, modo); salvarImovel(true); aoMostrar['tela-imovel'](); };
+  if (!temVideo) return troca();
+  confirmar({ titulo: 'Trocar o modo de filmagem?', texto: 'Os vídeos já gravados deste imóvel serão descartados.', sim: 'Trocar', perigo: true }).then(async ok => {
+    if (!ok) return aoMostrar['tela-imovel']();
+    for (const c of S.imovel.comodos) await DB.apagarTake(c.take).catch(() => {});
+    troca();
+  });
+}
+function addAndar() { const n = S.imovel.comodos.length + 1; S.imovel.comodos.push({ id: uid(), nome: 'Andar ' + n, status: 'pendente', tipo: 'andar' }); salvarImovel(); aoMostrar['tela-imovel'](); }
 
 aoMostrar['tela-guia'] = () => {
   const c = comodo(S.atual); $('#guia-nome').textContent = c ? c.nome : '';
-  $('#carrossel').scrollLeft = 0; marcarPonto(0);
+  const casa = modoCasa();
+  $('#carrossel-casa').hidden = !casa; $('#carrossel').hidden = casa;
+  $('#guia-meta').textContent = casa ? 'Grave o andar inteiro num vídeo só. O botão “Terminar andar” libera depois de 1 minuto; um apartamento leva de 5 a 8 minutos.'
+    : 'Para liberar o botão “Terminar cômodo”: 75% do mapa verde e pelo menos 60% em cada altura.';
+  $(casa ? '#carrossel-casa' : '#carrossel').scrollLeft = 0; marcarPonto(0);
 };
 function marcarPonto(i) { $$('#pontos i').forEach((p, k) => p.classList.toggle('on', k === i)); $('#btn-guia-prox').textContent = i >= 3 ? 'Ver de novo' : 'Próxima'; }
 
@@ -1463,6 +1772,8 @@ aoMostrar['tela-revisao'] = () => {
     ['Baixo', c.cobertura.semPitch ? '—' : pct(f[2]), c.cobertura.semPitch ? '' : cls(f[2])],
     ['Duração', fmtTempo(c.duracao), ''], ['Tamanho', fmtBytes(c.bytes), ''], ['Passos', String(c.passos || 0), ''], ['Formato', (c.ext || '').toUpperCase(), ''],
   ].map(([k, v, cl]) => `<div><dt>${k}</dt><dd class="${cl}">${v}</dd></div>`).join('');
+  renderCert(c);
+  if (c.cert && c.cert.estado === 'processando') acompanharCert(c);
   $('#rev-probs').innerHTML = listaProblemas(c).map(([cl, t, s]) => `<li class="${cl}"><span>${esc(t)}${s ? ` <small>${esc(s)}</small>` : ''}</span></li>`).join('');
   const v = $('#rev-video'); v.hidden = true; if (v.src) { URL.revokeObjectURL(v.src); v.removeAttribute('src'); v.load(); }
   $('#btn-ver-video').hidden = false;
@@ -1470,6 +1781,9 @@ aoMostrar['tela-revisao'] = () => {
   $('#btn-rev-prox').textContent = prox ? `Próximo: ${prox.nome}` : 'Ver resumo';
 };
 function listaProblemas(c) {
+  if (CFG.FOTOS && c.take && (c.fotos || 0) < 30 && !c.demo) {
+    // 30 fotos é o mínimo prático: abaixo disso o alinhamento costuma não fechar
+  }
   const out = [], a = c.alertas || {}, f = c.cobertura.faixas;
   const nomes = { escuro: 'Trechos escuros', tremido: 'Imagem tremida', rapido: 'Giro rápido demais', girando: 'Girando parado', pulo: 'Pulos na imagem', claro: 'Luz forte / contraluz' };
   if (c.forcado) out.push(['bad', 'Terminado abaixo da meta', 'o 3D pode ter buracos nas partes vermelhas do mapa']);
@@ -1584,7 +1898,8 @@ async function enviarTudo() {
       c.upload = { estado: 'enviando' }; aoMostrar['tela-resumo']();
       const { video, dados } = await prepararArquivos(c);
       const fd = new FormData();
-      fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP })); fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome }));
+      fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP, imobiliaria: CFG.IMOBILIARIA || '' }));
+      fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} }));
       if (video) fd.append('video', video, video.name); if (dados) fd.append('dados', dados, dados.name);
       const r = await fetch(CFG.NUVEM_URL, { method: 'POST', body: fd });
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1621,7 +1936,8 @@ async function comecar() {
   ul.innerHTML = itemCheck('…', '', 'Câmera', 'pedindo acesso') + itemCheck('…', '', 'Sensores de movimento', 'verificando') + itemCheck('…', '', 'Espaço no aparelho', 'verificando');
   const linhas = [];
   let camOk = false;
-  try { await abrirCamera(); camOk = true; const i = CAM.info; linhas.push(itemCheck('✓', i && Math.min(i.w, i.h) >= 1080 ? 'ok' : 'warn', 'Câmera traseira', i ? `${i.w}×${i.h} · ${i.fps} fps${Math.min(i.w, i.h) < 1080 ? ' · abaixo de 1080p' : ''}` : 'ok')); }
+  try { await abrirCamera(); camOk = true; const i = CAM.info; linhas.push(itemCheck('✓', i && Math.min(i.w, i.h) >= 1080 ? 'ok' : 'warn', 'Câmera traseira', i ? `${i.w}×${i.h} · ${i.fps} fps${Math.min(i.w, i.h) < 1080 ? ' · abaixo de 1080p' : ''}` : 'ok'));
+    linhas.push(CAM.lente === 'normal' ? itemCheck('!', 'warn', 'Lente grande-angular (0.5x)', 'não encontrada pelo navegador: filme mais devagar e mais perto das paredes') : itemCheck('✓', 'ok', 'Lente grande-angular (0.5x)', CAM.lente === 'ultra' ? 'câmera ultra-wide ativa' : 'zoom 0.5x ativo')); }
   catch (e) { linhas.push(itemCheck('!', 'bad', 'Câmera', msgErroCamera(e))); }
   const ps = await permSens;
   await sleep(1200);
@@ -1698,8 +2014,20 @@ function ligar() {
   const car = $('#carrossel');
   car.addEventListener('scroll', () => { const w = car.firstElementChild.getBoundingClientRect().width + 12; marcarPonto(Math.round(car.scrollLeft / w)); }, { passive: true });
   $('#btn-guia-prox').addEventListener('click', () => {
-    const w = car.firstElementChild.getBoundingClientRect().width + 12, i = Math.round(car.scrollLeft / w);
-    car.scrollTo({ left: i >= 3 ? 0 : (i + 1) * w, behavior: reduzMov ? 'auto' : 'smooth' });
+    const cr = modoCasa() ? $('#carrossel-casa') : car;
+    const w = cr.firstElementChild.getBoundingClientRect().width + 12, i = Math.round(cr.scrollLeft / w);
+    cr.scrollTo({ left: i >= 3 ? 0 : (i + 1) * w, behavior: reduzMov ? 'auto' : 'smooth' });
+  });
+  $('#segm-modo').addEventListener('click', e => { const b = e.target.closest('button'); if (b) trocarModo(b.dataset.modo); });
+  $('#btn-add-andar').addEventListener('click', addAndar);
+  $('#g-amb').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b || Cap.estado !== 'gravando') return;
+    Cap.marcadores[String(Math.round(Cap.tVideo))] = b.textContent;
+    Cap.ambienteAtual = b.textContent;
+    Cap.ambientes[slug(b.textContent)] = b.textContent;
+    b.classList.add('visitado');
+    $$('#g-amb .chip').forEach(x => x.classList.toggle('on', x === b));
+    toast(`${b.textContent} marcado aos ${fmtTempo(Cap.tVideo)}`, 1500); vibrar(30);
   });
   $('#btn-filmar').addEventListener('click', iniciarCaptura);
   // gravação
@@ -1707,11 +2035,17 @@ function ligar() {
   $('#btn-continuar').addEventListener('click', continuar);
   $('#btn-pausa-terminar').addEventListener('click', () => encerrarCaptura('forcado'));
   $('#btn-descartar').addEventListener('click', async () => {
-    const ok = await confirmar({ titulo: 'Descartar esta gravação?', texto: 'O vídeo deste cômodo não será salvo.', sim: 'Descartar', perigo: true });
+    const ok = await confirmar({ titulo: 'Descartar esta gravação?', texto: modoCasa() ? 'O vídeo deste andar não será salvo.' : 'O vídeo deste cômodo não será salvo.', sim: 'Descartar', perigo: true });
     if (ok) encerrarCaptura('descartar');
   });
   $('#btn-terminar').addEventListener('click', async () => {
     if (Cap.estado === 'calibrando') return;
+    if (modoCasa()) {
+      if (Cap.tVideo >= CFG.MIN_ANDAR_S) return encerrarCaptura('ok');
+      const ok = await confirmar({ titulo: 'Vídeo muito curto', texto: `Só ${fmtTempo(Cap.tVideo)} de vídeo. Um andar costuma levar de 5 a 8 minutos.`, sim: 'Continuar filmando', nao: 'Terminar mesmo assim' });
+      if (!ok && (Cap.estado === 'gravando' || Cap.estado === 'pausado')) encerrarCaptura('forcado');
+      return;
+    }
     const cob = calcCobertura(Cap.cel, semPitch());
     if (cob.ok) return encerrarCaptura('ok');
     const falta = cob.semPitch ? [] : cob.faixas.map((v, i) => v < CFG.META_FAIXA ? FAIXAS[i].toLowerCase() : null).filter(Boolean);
@@ -1763,7 +2097,15 @@ async function init() {
   await DB.abrir();
   try { S.imovel = await DB.get('imovel'); } catch (e) { S.imovel = null; }
   if (!S.imovel || !Array.isArray(S.imovel.comodos)) S.imovel = novoImovel();
-  const url = location.href.split('#')[0];
+  try {
+    const q = new URLSearchParams(location.search).get('cert');
+    S.envioDemo = new URLSearchParams(location.search).get('envio') === 'demo';
+    if (q === 'off') { CFG.CERT_URL = ''; await DB.put('cert', ''); }
+    else if (q) { CFG.CERT_URL = q.replace(/\/+$/, ''); await DB.put('cert', CFG.CERT_URL); }
+    else if (!CFG.CERT_URL) { const g = await DB.get('cert'); if (g) CFG.CERT_URL = g; }
+    if (q != null) history.replaceState(null, '', location.pathname + location.hash);
+  } catch (e) {}
+  const url = location.href.split('#')[0].split('?')[0];
   $('#url-txt').textContent = url.replace(/^https?:\/\//, '');
   try { QR.desenhar($('#qr'), url); } catch (e) {}
   ligar();
