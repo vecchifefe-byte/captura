@@ -213,6 +213,11 @@ input[type=text]::placeholder{color:#5f6e75}
 .g-camada p{font-size:18px;font-weight:650;max-width:22ch}
 .g-camada small{color:#b8c4c9;font-size:14px;max-width:30ch}
 .calib-circ{width:112px;height:112px;border-radius:50%;border:3px solid var(--accent);display:grid;place-items:center;font-size:48px;font-weight:800}
+.calib-alerta{font-size:20px;font-weight:800;color:#ffb020;margin:14px 0 6px}
+.calib-barra{height:10px;border-radius:5px;background:#ffffff22;overflow:hidden;margin:14px auto 10px;max-width:260px}
+.calib-barra i{display:block;height:100%;width:0;background:#ffb020;transition:width .25s,background .25s}
+.calib-barra.ok i{background:#2fd27a}
+#calib-luz{max-width:320px}
 .g-camada .btn{min-width:240px}
 .g-tag{font-size:12px;font-weight:700;background:rgba(251,191,36,.9);color:#1b1300;padding:3px 8px;border-radius:6px}
 
@@ -263,7 +268,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela tela-pc" id="tela-pc" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-11</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-01</span></span>
   </header>
   <div class="pc-grid">
     <div class="pc-texto">
@@ -302,7 +307,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela" id="tela-inicio" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261001-11</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-01</span></span>
   </header>
   <div class="inicio-hero"><canvas data-anim="contorno" aria-hidden="true"></canvas></div>
   <h1>Assistente de filmagem 3D</h1>
@@ -422,8 +427,22 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
   </div>
   <div class="g-camada" id="g-calib" hidden>
     <div class="calib-circ"><span id="calib-n">3</span></div>
-    <p>Aponte para a parede à sua frente e segure parado</p>
-    <small>Esse ponto vira o início do mapa. A gravação começa em seguida.</small>
+    <p id="calib-txt">Aponte para a parede à sua frente e segure parado</p>
+    <small id="calib-sub">Esse ponto vira o início do mapa. A gravação começa em seguida.</small>
+    <div id="calib-luz" hidden>
+      <p class="calib-alerta">Está escuro aqui</p>
+      <small>Pouca luz é o que mais estraga o 3D — mais que tremer, mais que filmar rápido.<br>
+      <b>Acenda todas as luzes e abra as cortinas</b>, depois é só esperar: o botão se solta sozinho.</small>
+      <div class="calib-barra"><i id="calib-luz-b"></i></div>
+      <button class="btn" id="btn-luz-assim">Filmar assim mesmo</button>
+    </div>
+  </div>
+  <div class="g-camada" id="g-passagem" hidden>
+    <h2>Saia filmando pela porta</h2>
+    <p>Atravesse <b>devagar</b> e pare um instante <b>de cada lado</b> da porta.</p>
+    <small>São estas fotos que grudam este cômodo no vizinho. Sem elas, os ambientes ficam soltos.</small>
+    <div class="calib-barra"><i id="passagem-b"></i></div>
+    <button class="btn" id="btn-passagem-pular">Pular (não tem porta)</button>
   </div>
   <div class="g-camada" id="g-pausa" hidden>
     <h2>Pausado</h2>
@@ -509,9 +528,23 @@ const CFG = {
   FOTO_ACC: 0.12,         // variância da aceleração (janela curta) máxima para "parado"
   FOTO_NIT: 0.6,          // nitidez mínima, como fração da referência do cômodo
   FOTO_ANG: 12,           // graus girados desde a última foto para valer outra
-  FOTO_INTERVALO: 900,    // ms mínimo entre fotos
+  // VARREDURA CONTÍNUA (2/10). O ritual "dá um passo, para, tira foto" rendia 0,28
+  // fotos/s. Os guias de quem faz isso profissionalmente pedem 150–250 fotos por
+  // CÔMODO; nesse ritmo o corretor andaria meia hora por quarto. A 350 ms sai ~2,8/s:
+  // um cômodo em ~1 minuto de caminhada lenta, com ~150 fotos. Mais fotos E menos tempo.
+  FOTO_INTERVALO: 350,    // ms mínimo entre fotos
+  FOTO_MOV_MIN: 0.35,     // px de deslocamento da imagem para a foto acrescentar algo
+  MOV_RAPIDO: 6.0,        // px/quadro: acima disso está andando rápido demais
+  MOV_PARADO: 0.5,        // px/quadro: abaixo disso não está se deslocando
+  PARADO_MS: 3500,        // ms sem deslocamento até cobrar "continue andando"
+  LUZ_MIN: 70,            // brilho médio mínimo para liberar a gravação (0–255)
   FOTO_FORCA: 2200,       // ms sem nada mudar: tira assim mesmo, para não haver buraco
   FOTO_QUALIDADE: 0.9,    // qualidade do JPEG
+  // Largura máxima da foto guardada. Os guias de treino usam ~1,6k px; o que passa
+  // disso é descartado no treino de qualquer jeito. Medido: a 2,4 fotos/s um
+  // apartamento de 6 ambientes dá 327 MB a 1920 px e 273 MB a 1600 — 17% a menos
+  // para subir de dentro do imóvel, sem perder nada que o treino fosse usar.
+  FOTO_LARGURA_MAX: 1600,
   FOTO_AVISO: 9000,       // ms sem nenhuma foto: diz o motivo em voz alta
   VOZ: true,              // orientação falada (o iPhone não vibra pelo navegador)
   IMOBILIARIA: '',        // código da imobiliária cadastrada no servidor (imobiliarias.json); vazio = padrão
@@ -540,6 +573,12 @@ const CFG = {
   VIDEO_BPS: 8000000,     // 8 Mbps: ~60 MB/min; a lente aberta pega mais detalhe por quadro
   MIN_ANDAR_S: 60,        // segundos mínimos de vídeo para terminar um andar no modo casa inteira
   AMBIENTES: ['Sala', 'Cozinha', 'Quarto', 'Suíte', 'Banheiro', 'Corredor', 'Área de serviço', 'Varanda', 'Escritório', 'Churrasqueira', 'Pátio', 'Garagem'],
+  // PASSAGEM (3/10): o 3D de cada cômodo é treinado separado — a placa de vídeo só
+  // aguenta ~24 fotos por vez e, mesmo que aguentasse, cena grande sai pior que
+  // pedaços. O que faz os pedaços se encaixarem num apartamento só é a porta filmada
+  // DOS DOIS LADOS: são as fotos da passagem que aparecem nos dois cômodos ao mesmo
+  // tempo e amarram um no outro. Sem isso, os cômodos ficam soltos no espaço.
+  PASSAGEM_S: 8,          // segundos atravessando a porta devagar, parando dos dois lados
 };
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -1012,16 +1051,46 @@ async function abrirCamera() {
   CAM.stream = st;
   return st;
 }
-async function travarBrilho() {
-  // brilho e cor travados durante a gravação: a mudança de exposição entre cômodos borra o 3D (só onde o celular deixa)
+/* TRAVAR A CÂMERA — a correção de maior retorno medido de toda a captura.
+
+   O celular reajusta exposição, foco e balanço de branco a cada quadro. Para o
+   reconstrutor 3D, duas fotos do mesmo canto com brilho diferente são CONTRADITÓRIAS:
+   ele não consegue achar uma cena só que explique as duas, e desiste no meio-termo —
+   é daí que vem boa parte do borrado.
+
+   Quanto vale, medido na literatura: corrigir variação de exposição/branco entre fotos
+   rende +5,3 dB. Para comparação, no teste de ontem renderizar no dobro da resolução
+   rendeu 0,0 dB e usar a foto inteira rendeu 0,15 dB.
+
+   Por que travar DEPOIS da contagem e não ao abrir a câmera: o automático precisa de
+   alguns segundos olhando o cômodo para acertar o ponto. Travar antes disso congela
+   um ajuste errado. Então: abre, deixa estabilizar durante a contagem, trava.
+
+   Nem todo celular deixa. O que não travar continua automático — por isso o relatório. */
+async function travarCamera() {
+  const r = { exposicao: false, branco: false, foco: false, suportado: false };
   try {
-    const tr = CAM.stream && CAM.stream.getVideoTracks()[0]; if (!tr || !tr.getCapabilities) return;
-    const cap = tr.getCapabilities(), adv = [];
-    if (cap.exposureMode && cap.exposureMode.includes('manual')) adv.push({ exposureMode: 'manual' });
-    if (cap.whiteBalanceMode && cap.whiteBalanceMode.includes('manual')) adv.push({ whiteBalanceMode: 'manual' });
-    if (adv.length) { await tr.applyConstraints({ advanced: adv }); CAM.brilhoTravado = true; }
+    const tr = CAM.stream && CAM.stream.getVideoTracks()[0];
+    if (!tr || !tr.getCapabilities) return r;
+    const cap = tr.getCapabilities() || {};
+    r.suportado = !!(cap.exposureMode || cap.whiteBalanceMode || cap.focusMode);
+    // um de cada vez: num applyConstraints único, se o celular recusa UM modo ele
+    // descarta o pedido inteiro, e aí nada trava
+    const tentar = async (chave, valor) => {
+      if (!cap[chave] || !cap[chave].includes(valor)) return false;
+      try { await tr.applyConstraints({ advanced: [{ [chave]: valor }] }); return true; }
+      catch (e) { return false; }
+    };
+    r.exposicao = await tentar('exposureMode', 'manual');
+    r.branco = await tentar('whiteBalanceMode', 'manual');
+    // foco: 'manual' é o ideal; 'single-shot' trava depois de focar uma vez e serve
+    r.foco = (await tentar('focusMode', 'manual')) || (await tentar('focusMode', 'single-shot'));
   } catch (e) {}
+  CAM.travas = r;
+  CAM.brilhoTravado = r.exposicao || r.branco;
+  return r;
 }
+const travarBrilho = travarCamera;   // nome antigo, ainda usado em outros pontos
 function fecharCamera() {
   if (CAM.stream) CAM.stream.getTracks().forEach(t => t.stop());
   CAM.stream = null;
@@ -1209,6 +1278,7 @@ function zerarCap() {
     fotos: 0, fotoSeq: 0, fotoUlt: 0, fotoHead: null, fotoPitch: 0, fotoPassos: 0, paradoDesde: 0,
     fotoTirando: false, bytesFotos: 0, ambienteAtual: '', ambientes: {}, herdado: null,
     volta: 0, fotosVolta: [0, 0, 0], voltaAvisada: -1,
+    movUlt: 0, ritmoUlt: null, ritmoFalaUlt: 0,     // ritmo da varredura contínua
   });
   AN.prev = null; AN.nitHist = []; AN.parHist = [];
 }
@@ -1295,22 +1365,83 @@ async function iniciarCaptura() {
     CFG.AMBIENTES.forEach(n => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = n; amb.appendChild(b); });
     $('#btn-terminar').textContent = 'Terminar andar'; $('#btn-pausa-terminar').textContent = 'Terminar andar';
   } else { $('#btn-terminar').textContent = 'Terminar cômodo'; }
-  travarBrilho();
+  // trava agora, com o automático já estabilizado no cômodo durante a contagem
+  const tv = await travarCamera();
+  if (tv.suportado) {
+    const presos = [tv.exposicao && 'brilho', tv.branco && 'cor', tv.foco && 'foco'].filter(Boolean);
+    $('#g-res').textContent += presos.length ? ' · ' + presos.join('+') + ' travado' : ' · sem trava';
+  }
   Cap.estado = 'gravando'; Cap.tUlt = performance.now(); Cap.iniciado = new Date().toISOString();
   $('#g-rec').classList.add('on');
   vibrar(40);
 }
+/* PREPARAR: a contagem de 3 virou uma porta.
+
+   Ela só abre quando há luz suficiente. Cômodo escuro é, de longe, o pior inimigo do
+   3D — medido na literatura, pouca luz derruba a reconstrução para 6,88 dB (contra ~27
+   numa cena boa). Nenhum ajuste depois recupera isso. É mais barato acender a luz.
+
+   Não é uma parede: existe o "Filmar assim mesmo", porque às vezes é um banheiro sem
+   janela às 7 da noite e o corretor não tem o que fazer. Mas o padrão é segurar. */
 function calibrar() {
   return new Promise(res => {
-    const box = $('#g-calib'), n = $('#calib-n'); box.hidden = false;
-    let cont = 3, resets = 0; n.textContent = cont;
+    const box = $('#g-calib'), n = $('#calib-n'), cxLuz = $('#calib-luz');
+    const txt = $('#calib-txt'), sub = $('#calib-sub'), barra = $('#calib-luz-b');
+    box.hidden = false; cxLuz.hidden = true; n.parentElement.hidden = false;
+    let cont = 3, resets = 0, forcado = false; n.textContent = cont;
+    const btn = $('#btn-luz-assim');
+    const aoForcar = () => { forcado = true; falar('Vamos filmar assim. Evite cantos escuros.', true); };
+    btn.addEventListener('click', aoForcar, { once: true });
+    const fim = () => { clearInterval(iv); btn.removeEventListener('click', aoForcar);
+                        box.hidden = true; cxLuz.hidden = true; n.parentElement.hidden = false; res(); };
+    let avisou = false;
     const iv = setInterval(() => {
-      if (Cap.estado !== 'calibrando') { clearInterval(iv); box.hidden = true; return res(); }
+      if (Cap.estado !== 'calibrando') return fim();
+      const m = analisarQuadro($('#video'));
+      const luz = m ? m.luz : 255;                   // sem leitura, não segura ninguém
+      const escuro = luz < CFG.LUZ_MIN && !forcado;
+      if (escuro) {
+        // enquanto estiver escuro a contagem não anda: o botão fica preso de propósito
+        n.parentElement.hidden = true; cxLuz.hidden = false;
+        txt.textContent = 'Precisa de mais luz'; sub.hidden = true;
+        const f = clamp(luz / CFG.LUZ_MIN, 0, 1);
+        barra.style.width = Math.round(f * 100) + '%';
+        barra.parentElement.classList.toggle('ok', f >= 1);
+        if (!avisou) { avisou = true; falar('Está escuro. Acenda as luzes e abra as cortinas.', true); }
+        cont = 3; return;
+      }
+      n.parentElement.hidden = false; cxLuz.hidden = true; sub.hidden = false;
+      txt.textContent = 'Aponte para a parede à sua frente e segure parado';
       if (SEN.temMov && SEN.gyro > 30 && resets < 2) { cont = 3; resets++; }
       else cont--;
       n.textContent = Math.max(cont, 1);
-      if (cont <= 0) { clearInterval(iv); box.hidden = true; res(); }
+      if (cont <= 0) fim();
     }, 1000);
+  });
+}
+/* FILMAR A PASSAGEM antes de encerrar o cômodo.
+
+   A gravação continua ligada durante estes segundos, então as fotos saem normalmente —
+   é só uma instrução na tela no momento exato em que o corretor ia sair de qualquer
+   jeito. Custa 8 segundos e é o que permite reconstruir cômodo por cômodo e ainda
+   assim entregar um apartamento inteiro, costurado. */
+function filmarPassagem() {
+  return new Promise(res => {
+    if (Cap.estado !== 'gravando') return res();
+    const box = $('#g-passagem'), barra = $('#passagem-b');
+    box.hidden = false; barra.style.width = '0%'; barra.parentElement.classList.remove('ok');
+    falar('Saia filmando pela porta, devagar.', true);
+    const t0 = performance.now();
+    const fim = () => { clearInterval(iv); box.hidden = true;
+                        $('#btn-passagem-pular').removeEventListener('click', pular); res(); };
+    const pular = () => fim();
+    $('#btn-passagem-pular').addEventListener('click', pular, { once: true });
+    const iv = setInterval(() => {
+      if (Cap.estado !== 'gravando') return fim();
+      const f = clamp((performance.now() - t0) / (CFG.PASSAGEM_S * 1000), 0, 1);
+      barra.style.width = Math.round(f * 100) + '%';
+      if (f >= 1) { barra.parentElement.classList.add('ok'); vibrar(40); fim(); }
+    }, 120);
   });
 }
 function iniciarGravador() {
@@ -1415,16 +1546,48 @@ const FOTO = { cv: null };
 function avaliarFoto(m) {
   // MEDIDO em 1/10, no vídeo real do Fernando: quadros escolhidos SÓ por nitidez,
   // sem nenhuma parada, alinharam 81 de 81 (100%). Parar a cada passo não acrescentava
-  // nada — só tornava a filmagem insuportável. Então a única exigência agora é a
-  // foto prestar: nítida, nem escura nem estourada, e diferente da anterior.
+  // nada — só tornava a filmagem insuportável.
+  //
+  // AGORA VAI ALÉM (2/10): varre contínuo. A exigência deixou de ser "mudou o ângulo
+  // o bastante" e passou a ser só "a foto presta e a imagem andou um pouquinho".
+  // O gatilho antigo exigia 12° de giro ou um passo inteiro entre fotos — era ele que
+  // segurava o ritmo em 1 foto/s. O que o 3D quer é o contrário: muitos pontos de
+  // vista PRÓXIMOS, porque a sobreposição entre fotos vizinhas é o que costura a cena.
   avisarSemFoto(m);
+  orientarRitmo(m);
   if (m.escuro || m.claro || m.nit < m.nitRef * CFG.FOTO_NIT) return;
   if (m.agora - Cap.fotoUlt < CFG.FOTO_INTERVALO || Cap.fotoTirando) return;
-  // mudou o bastante desde a última? é da diferença entre os pontos de vista que nasce o 3D
-  const girou = Cap.fotoHead == null || Math.abs(angDif(m.head, Cap.fotoHead)) >= CFG.FOTO_ANG || Math.abs(m.pitch - Cap.fotoPitch) >= CFG.FOTO_ANG;
-  const andou = SEN.passosTot - Cap.fotoPassos >= 1;
+  // só evita a foto repetida de quem ficou parado: qualquer deslocamento já vale
+  const desl = m.mov ? Math.hypot(m.mov.mx || 0, m.mov.my || 0) : 99;
   const forca = m.agora - Cap.fotoUlt > CFG.FOTO_FORCA;
-  if (girou || andou || forca) tirarFoto(m);
+  if (desl >= CFG.FOTO_MOV_MIN || forca) tirarFoto(m);
+}
+
+/* RITMO: os dois únicos avisos que a varredura precisa.
+   Rápido demais borra (motion blur custa ~4 dB) e abre buracos entre fotos vizinhas.
+   Parado não gera nada: sem deslocamento não há paralaxe, e sem paralaxe não há 3D —
+   foi por isso que o modelo antigo, que mandava girar no lugar, não funcionava. */
+function orientarRitmo(m) {
+  if (Cap.estado !== 'gravando') return;
+  const desl = m.mov ? Math.hypot(m.mov.mx || 0, m.mov.my || 0) : 0;
+  const agora = m.agora;
+  if (desl >= CFG.MOV_PARADO) Cap.movUlt = agora;
+  if (!Cap.movUlt) Cap.movUlt = agora;
+  let aviso = null;
+  if (desl > CFG.MOV_RAPIDO) aviso = 'devagar';
+  else if (agora - Cap.movUlt > CFG.PARADO_MS) aviso = 'ande';
+  if (aviso === Cap.ritmoUlt) return;
+  Cap.ritmoUlt = aviso;
+  const el = $('#g-dica'); if (!el) return;
+  // voltou ao ritmo bom: tira o destaque E o texto. Deixar "Mais devagar" na tela
+  // enquanto ele já está andando certo ensina o corretor a ignorar os avisos.
+  if (!aviso) { el.classList.remove('destaque'); el.textContent = 'Ande devagar pela beirada'; return; }
+  el.textContent = aviso === 'devagar' ? 'Mais devagar' : 'Continue andando';
+  el.classList.add('destaque');
+  if (agora - (Cap.ritmoFalaUlt || 0) > 6000) {
+    Cap.ritmoFalaUlt = agora;
+    falar(aviso === 'devagar' ? 'Mais devagar.' : 'Continue andando devagar.', true);
+  }
 }
 
 /* Fotos pararam de sair: diz o motivo em voz alta, no máximo a cada FOTO_AVISO ms.
@@ -1447,8 +1610,14 @@ async function tirarFoto(m) {
   Cap.fotoTirando = true;
   try {
     const cv = FOTO.cv || (FOTO.cv = document.createElement('canvas'));
-    if (cv.width !== video.videoWidth || cv.height !== video.videoHeight) { cv.width = video.videoWidth; cv.height = video.videoHeight; }
-    cv.getContext('2d').drawImage(video, 0, 0);
+    // reduz para FOTO_LARGURA_MAX mantendo a proporção (o lado maior é que manda)
+    const maior = Math.max(video.videoWidth, video.videoHeight);
+    const k = maior > CFG.FOTO_LARGURA_MAX ? CFG.FOTO_LARGURA_MAX / maior : 1;
+    const LW = Math.round(video.videoWidth * k), LH = Math.round(video.videoHeight * k);
+    if (cv.width !== LW || cv.height !== LH) { cv.width = LW; cv.height = LH; }
+    const cx = cv.getContext('2d');
+    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(video, 0, 0, LW, LH);
     const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', CFG.FOTO_QUALIDADE));
     if (!blob || Cap.estado !== 'gravando') return;
     const seq = Cap.fotoSeq++, take = Cap.take;
@@ -1558,7 +1727,7 @@ function tick() {
   if (Cap.estado === 'calibrando') return;
 
   Cap.tVideo += dt;
-  if (CFG.FOTOS) avaliarFoto({ agora, gyro, aVar, nit, nitRef, head, pitch, luz, escuro, claro });
+  if (CFG.FOTOS) avaliarFoto({ agora, gyro, aVar, nit, nitRef, head, pitch, luz, escuro, claro, mov });
   if (boa) {
     Cap.cel[faixa][setor] += dt;
     Cap.cel[faixa][(setor + 1) % CFG.SETORES] += dt * .5;
@@ -1788,7 +1957,7 @@ function pararGravador() {
 async function encerrarCaptura(modo) {
   const estadoAnt = Cap.estado;
   Cap.estado = 'parado'; clearInterval(Cap.loop);
-  $('#g-rec').classList.remove('on'); $('#g-aviso').hidden = true; $('#g-pausa').hidden = true; $('#g-calib').hidden = true;
+  $('#g-rec').classList.remove('on'); $('#g-aviso').hidden = true; $('#g-pausa').hidden = true; $('#g-calib').hidden = true; $('#g-passagem').hidden = true;
   $('#g-dica').textContent = 'Salvando…';
   await pararGravador();
   await Cap.fila;
@@ -2135,7 +2304,7 @@ aoMostrar['tela-resumo'] = () => {
     if (modoCasa()) { cv.hidden = true; return; }   // no modo casa o anel de 360° só confunde
     desenharAnel(cv, c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch });
   });
-  $('#res-nome').title = 'v20261001-11';
+  $('#res-nome').title = 'v20261002-01';
   const saida = $('#res-saida');
   saida.innerHTML = CFG.NUVEM_URL
     ? `<h2>Gerar tour 3D</h2><p>Envia o vídeo e os dados de cada cômodo filmado para o processamento. O link do tour aparece aqui quando ficar pronto.</p><button class="btn btn-pri" id="btn-enviar">Enviar para gerar o 3D</button>`
@@ -2315,14 +2484,16 @@ function ligar() {
       return;
     }
     const cob = calcCobertura(Cap.cel, semPitch());
-    if (cob.ok) return encerrarCaptura('ok');
+    if (cob.ok) { await filmarPassagem(); return encerrarCaptura('ok'); }
     const falta = cob.semPitch ? [] : cob.faixas.map((v, i) => v < CFG.META_FAIXA ? FAIXAS[i].toLowerCase() : null).filter(Boolean);
     const ok = await confirmar({
       titulo: 'Cobertura ainda baixa',
       texto: `O mapa está em ${pct(cob.total)} (meta ${pct(CFG.META_TOTAL)})${falta.length ? `; falta completar a altura ${falta.join(', ')}` : ''}. As partes vermelhas podem virar buracos no 3D.`,
       sim: 'Continuar filmando', nao: 'Terminar mesmo assim',
     });
-    if (!ok && (Cap.estado === 'gravando' || Cap.estado === 'pausado')) encerrarCaptura('forcado');
+    if (!ok && (Cap.estado === 'gravando' || Cap.estado === 'pausado')) {
+      await filmarPassagem(); encerrarCaptura('forcado');
+    }
   });
   $('#btn-erro-demo').addEventListener('click', () => { $('#g-erro').hidden = true; S.demo = true; fecharCamera(); iniciarCaptura(); });
   $('#btn-erro-voltar').addEventListener('click', () => { $('#g-erro').hidden = true; clearInterval(Cap.loop); Cap.estado = 'parado'; sairTelaCheia(); soltarWake(); mostrar('tela-imovel'); });
