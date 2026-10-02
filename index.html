@@ -214,6 +214,12 @@ input[type=text]::placeholder{color:#5f6e75}
 .g-camada small{color:#b8c4c9;font-size:14px;max-width:30ch}
 .calib-circ{width:112px;height:112px;border-radius:50%;border:3px solid var(--accent);display:grid;place-items:center;font-size:48px;font-weight:800}
 .calib-alerta{font-size:20px;font-weight:800;color:#ffb020;margin:14px 0 6px}
+.env{margin:6px 0}
+.env-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;font-weight:700}
+.env-topo small{font-weight:400;opacity:.75;font-variant-numeric:tabular-nums}
+.env-barra{height:8px;border-radius:4px;background:#ffffff1f;overflow:hidden;margin:5px 0 3px}
+.env-barra i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.env .lead{font-size:12px}
 .calib-barra{height:10px;border-radius:5px;background:#ffffff22;overflow:hidden;margin:14px auto 10px;max-width:260px}
 .calib-barra i{display:block;height:100%;width:0;background:#ffb020;transition:width .25s,background .25s}
 .calib-barra.ok i{background:#2fd27a}
@@ -268,7 +274,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela tela-pc" id="tela-pc" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-01</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-02</span></span>
   </header>
   <div class="pc-grid">
     <div class="pc-texto">
@@ -307,7 +313,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela" id="tela-inicio" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-01</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-02</span></span>
   </header>
   <div class="inicio-hero"><canvas data-anim="contorno" aria-hidden="true"></canvas></div>
   <h1>Assistente de filmagem 3D</h1>
@@ -538,6 +544,11 @@ const CFG = {
   MOV_PARADO: 0.5,        // px/quadro: abaixo disso não está se deslocando
   PARADO_MS: 3500,        // ms sem deslocamento até cobrar "continue andando"
   LUZ_MIN: 70,            // brilho médio mínimo para liberar a gravação (0–255)
+  // O que o botão "Terminar" cobra. Substituiu a cobertura do anel de 360°, que
+  // media para onde o celular apontou e por isso premiava girar parado — o oposto
+  // do que o 3D precisa. Fotos e caminhada são o que de fato prevê o resultado.
+  MIN_FOTOS: 90,          // fotos boas para o cômodo valer (os guias pedem 150+)
+  MIN_SEGUNDOS: 50,       // segundos de caminhada
   FOTO_FORCA: 2200,       // ms sem nada mudar: tira assim mesmo, para não haver buraco
   FOTO_QUALIDADE: 0.9,    // qualidade do JPEG
   // Largura máxima da foto guardada. Os guias de treino usam ~1,6k px; o que passa
@@ -629,26 +640,57 @@ function lerCores() {
    ===================================================================== */
 const DB = (() => {
   let db = null;
+  let gravado = false;          // o navegador PROMETEU não apagar? (não é o mesmo que "abriu")
   const mem = { meta: new Map(), chunks: [], logs: new Map(), fotos: [] };
+
+  /* PERSISTÊNCIA — foi aqui que uma filmagem inteira se perdeu.
+
+     O código antigo fazia `navigator.storage.persist()` sem esperar e sem olhar o
+     resultado, e depois `persistente: () => !!db` dizia "guardado no aparelho" só
+     porque o banco ABRIU. Abrir não é o mesmo que estar protegido: sem a promessa do
+     navegador, o Android joga fora os dados do site quando o aparelho fica sem
+     espaço — e um vídeo de 135 MB é a primeira coisa a ir embora.
+
+     Agora: espera a resposta, guarda a resposta de verdade, e quem perguntar recebe
+     a verdade. Se o navegador negar, a tela avisa ANTES de filmar. */
   async function abrir() {
+    for (const tentativa of [1, 2]) {
+      try {
+        db = await new Promise((res, rej) => {
+          const r = indexedDB.open('captura3d', 2);
+          r.onupgradeneeded = () => {
+            const d = r.result;
+            const tem = k => d.objectStoreNames.contains(k);
+            if (!tem('fotos')) d.createObjectStore('fotos', { autoIncrement: true }).createIndex('take', 'take');
+            if (tem('meta')) return;
+            d.createObjectStore('meta');
+            d.createObjectStore('chunks', { autoIncrement: true }).createIndex('take', 'take');
+            d.createObjectStore('logs');
+          };
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+          r.onblocked = () => rej(new Error('bloqueado por outra aba'));
+          // 3 s era curto demais: num aparelho ocupado o banco demora e o app caía
+          // para a memória volátil sem ninguém perceber. 12 s, e tenta duas vezes.
+          setTimeout(() => rej(new Error('timeout')), 12000);
+        });
+        break;
+      } catch (e) { db = null; if (tentativa === 1) await sleep(600); }
+    }
     try {
-      db = await new Promise((res, rej) => {
-        const r = indexedDB.open('captura3d', 2);
-        r.onupgradeneeded = () => {
-          const d = r.result;
-          const tem = k => d.objectStoreNames.contains(k);
-          if (!tem('fotos')) d.createObjectStore('fotos', { autoIncrement: true }).createIndex('take', 'take');
-          if (tem('meta')) return;
-          d.createObjectStore('meta');
-          d.createObjectStore('chunks', { autoIncrement: true }).createIndex('take', 'take');
-          d.createObjectStore('logs');
-        };
-        r.onsuccess = () => res(r.result);
-        r.onerror = () => rej(r.error);
-        setTimeout(() => rej(new Error('timeout')), 3000);
-      });
-    } catch (e) { db = null; }
-    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+      if (navigator.storage && navigator.storage.persist) {
+        gravado = await navigator.storage.persisted ? await navigator.storage.persisted() : false;
+        if (!gravado) gravado = await navigator.storage.persist();
+      }
+    } catch (e) { gravado = false; }
+    return { db: !!db, gravado };
+  }
+  async function espaco() {
+    try {
+      const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      if (!e || !e.quota) return null;
+      return { livre: e.quota - (e.usage || 0), total: e.quota, usado: e.usage || 0 };
+    } catch (e) { return null; }
   }
   function tx(store, mode, fn) {
     return new Promise((res, rej) => {
@@ -662,8 +704,11 @@ const DB = (() => {
     });
   }
   return {
-    abrir,
-    persistente: () => !!db,
+    abrir, espaco,
+    // VERDADE, não otimismo: só é "persistente" se o navegador prometeu não apagar.
+    persistente: () => !!db && gravado,
+    temBanco: () => !!db,          // abriu o banco (mas pode ser apagável)
+    protegido: () => gravado,
     get: k => db ? tx('meta', 'readonly', s => s.get(k)) : Promise.resolve(mem.meta.get(k)),
     put: (k, v) => db ? tx('meta', 'readwrite', s => s.put(v, k)) : (mem.meta.set(k, v), Promise.resolve()),
     addFoto: (take, seq, blob, meta) => db ? tx('fotos', 'readwrite', s => s.add({ take, seq, blob, meta })) : (mem.fotos.push({ take, seq, blob, meta }), Promise.resolve()),
@@ -1312,8 +1357,40 @@ let wake = null;
 async function pedirWake() { try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) { wake = null; } }
 function soltarWake() { try { wake && wake.release(); } catch (e) {} wake = null; }
 
+/* CONFERÊNCIA ANTES DE FILMAR — a trava que faltava.
+
+   Duas filmagens podem ser perdidas por motivos que dá para saber ANTES de gastar
+   três minutos andando pelo cômodo:
+     1. o navegador não prometeu guardar os dados (eles podem ser apagados sozinhos)
+     2. não há espaço livre suficiente para o vídeo
+   Antes isso só aparecia depois, numa linha pequena na tela de resumo. Agora barra
+   na frente, com o número na cara e a escolha explícita. */
+async function conferirArmazenamento() {
+  const esp = await DB.espaco();
+  const minutos = esp ? esp.livre / (CFG.VIDEO_BPS / 8) / 60 : null;
+  // "Filmar assim mesmo" é o botão SIM de propósito: tocar fora da caixa devolve
+  // "não", e a saída segura de uma dispensa acidental tem que ser NÃO filmar.
+  const perguntar = (titulo, texto) => confirmar({
+    titulo, texto, perigo: true, sim: 'Filmar assim mesmo', nao: 'Cancelar',
+  });
+  if (!DB.temBanco()) {
+    return perguntar('Risco de perder a filmagem',
+      'Não consegui abrir o armazenamento deste navegador. O vídeo ficaria só na memória e some se a aba fechar ou recarregar. Feche as outras abas deste site e tente de novo.');
+  }
+  if (!DB.protegido()) {
+    return perguntar('O celular pode apagar a filmagem',
+      'Este navegador não garantiu guardar os arquivos: se o aparelho ficar sem espaço, ele apaga os dados deste site sozinho. Libere espaço, ou adicione o site à tela de início (menu ⋮ → "Adicionar à tela inicial"), que aí o Android passa a proteger.');
+  }
+  if (minutos != null && minutos < 6) {
+    return perguntar('Pouco espaço no aparelho',
+      `Só cabem cerca de ${Math.floor(minutos)} min de vídeo (${fmtBytes(esp.livre)} livres), e um cômodo leva de 2 a 3 min. Libere espaço antes de continuar.`);
+  }
+  return true;
+}
+
 async function iniciarCaptura() {
   const c = comodo(S.atual); if (!c) return;
+  if (!(await conferirArmazenamento())) return;
   entrarTelaCheia();
   zerarCap();
   // Refilmar SOMA à passada anterior: o verde já conquistado continua verde e o corretor
@@ -1457,8 +1534,19 @@ function iniciarGravador() {
   rec.ondataavailable = e => {
     if (!e.data || !e.data.size) return;
     const seq = Cap.seq++, take = Cap.take; Cap.bytes += e.data.size;
-    Cap.fila = Cap.fila.then(() => DB.addChunk(take, seq, e.data)).catch(() => {
-      if (!Cap.erroGravar) { Cap.erroGravar = true; toast('Armazenamento do aparelho cheio: termine este cômodo', 5000); }
+    // ENCHEU NO MEIO DA GRAVAÇÃO. Antes isto mostrava um aviso de 5 segundos e a
+    // gravação SEGUIA — cada pedaço seguinte caía no vazio, e o corretor só
+    // descobria no fim, com o vídeo truncado. Agora para na hora: o que já foi
+    // gravado está salvo e vira um take válido, em vez de virar lixo comprido.
+    Cap.fila = Cap.fila.then(() => DB.addChunk(take, seq, e.data)).catch(err => {
+      if (Cap.erroGravar) return;
+      Cap.erroGravar = true;
+      const cheio = err && /quota|space|cheio/i.test(String(err.name || '') + String(err.message || ''));
+      falar(cheio ? 'Armazenamento cheio. Parei a gravação.' : 'Erro ao gravar. Parei aqui.', true);
+      toast(cheio ? 'Armazenamento cheio — parei a gravação. O que já foi filmado está salvo.'
+                  : 'Erro ao gravar — parei aqui. O que já foi filmado está salvo.', 8000);
+      vibrar(200);
+      if (Cap.estado === 'gravando' || Cap.estado === 'pausado') encerrarCaptura('forcado');
     });
   };
   rec.onerror = () => toast('Erro na gravação do vídeo', 4000);
@@ -1647,9 +1735,14 @@ async function tirarFoto(m) {
 }
 
 /* ---------- envio contínuo das fotos ---------- */
-const ENV = { fila: [], ativos: 0, ok: 0, erros: 0, max: 2 };
+const ENV = { fila: [], ativos: 0, ok: 0, erros: 0, max: 2, pausado: false };
 function enfileirarEnvio(item) { ENV.fila.push(item); bombearEnvio(); }
 function bombearEnvio() {
+  // DOIS ENVIOS NÃO DISPUTAM A MESMA INTERNET. As fotos do Certificado e o vídeo do
+  // tour subiam ao mesmo tempo, dividindo a banda: o vídeo de 135 MB rastejava e
+  // parecia travado. Enquanto o vídeo sobe, as fotos esperam — a fila não some,
+  // só pausa, e volta sozinha quando o vídeo termina.
+  if (ENV.pausado) { atualizarEnvioUI(); return; }
   while (ENV.ativos < ENV.max && ENV.fila.length) {
     const it = ENV.fila.shift(); ENV.ativos++;
     enviarFoto(it).then(() => { ENV.ok++; },
@@ -1718,7 +1811,13 @@ function tick() {
   const pulo = !!(mov && mov.textura && mov.pulo) && !rapido;
   const inclOk = Math.abs(pitch) < 70;
   const boa = !escuro && !tremido && !rapido && !pulo && !girandoParado && inclOk && (andando || Cap.yaw < 10);
-  const faixa = semPitch() ? 1 : pitch <= -CFG.PITCH ? 0 : pitch >= CFG.PITCH ? 2 : 1;
+  // SINAL INVERTIDO — o defeito que marcou 0% na volta de baixo, no teste de 2/10.
+  // MEDIDO (conferido na fórmula do onOri): pitch POSITIVO = câmera apontando para
+  // CIMA, pitch NEGATIVO = câmera para BAIXO. As faixas são ['Alto','Meio','Baixo'],
+  // ou seja 0 = Alto e 2 = Baixo. Logo pitch positivo tem que cair em 0, não em 2.
+  // Eu já havia corrigido isto no gatilho das fotos (faixaDaInclinacao) e deixei
+  // este aqui com o sinal trocado — meio conserto é o mesmo que nenhum.
+  const faixa = semPitch() ? 1 : pitch >= CFG.PITCH ? 0 : pitch <= -CFG.PITCH ? 2 : 1;
   const rel = wrap360(head - Cap.h0), setor = Math.floor(rel / (360 / CFG.SETORES)) % CFG.SETORES;
   const ativos = { escuro, claro, tremido, rapido, girando: girandoParado, pulo };
 
@@ -1877,8 +1976,15 @@ function atualizarPainel(cob, faixa, rel = 0, andando = true, aviso = null) {
     $('#seta-esq').hidden = true; $('#seta-dir').hidden = true;
     return;
   }
-  bt.dataset.ok = cob.ok ? '1' : '0';
-  bt.textContent = cob.ok ? '✓ Terminar cômodo' : cob.total < CFG.META_TOTAL ? `Terminar · faltam ${Math.max(1, Math.round((CFG.META_TOTAL - cob.total) * 100))}%` : 'Terminar · faltam alturas';
+  // O botão passa a mostrar o que o corretor pode de fato controlar: quantas fotos
+  // já tem. "faltam 71%" de um mapa de direções não dizia o que fazer — e pior,
+  // sugeria girar. "faltam 40 fotos" se resolve andando, que é o movimento certo.
+  const faltaF = Math.max(0, CFG.MIN_FOTOS - Cap.fotos), faltaS = Math.max(0, CFG.MIN_SEGUNDOS - Cap.tVideo);
+  const okMat = !faltaF && !faltaS;
+  bt.dataset.ok = okMat ? '1' : '0';
+  bt.textContent = okMat ? '✓ Terminar cômodo'
+    : faltaF ? `Terminar · faltam ${faltaF} fotos`
+    : `Terminar · faltam ${Math.ceil(faltaS)}s`;
   if (Cap.estado !== 'gravando') return;
   // dica + seta
   const dica = $('#g-dica');
@@ -1979,7 +2085,11 @@ async function encerrarCaptura(modo) {
     marcadores: { ...(Cap.marcadores || {}) }, lente: CAM.lente || 'normal', brilho_travado: !!CAM.brilhoTravado,
     fotos: Cap.fotos, bytesFotos: Cap.bytesFotos, ambientes: { ...(Cap.ambientes || {}) }, cert: null,
     voltas: (Cap.fotosVolta || [0, 0, 0]).slice(),
-    status: cob.ok ? 'ok' : 'baixo', take: Cap.take, mime: Cap.mime, ext: extDe(Cap.mime), bytes: Cap.bytes,
+    // "ok"/"baixo" passa a seguir o mesmo critério do botão Terminar: material de
+    // verdade (fotos + caminhada). O anel de 360° continua guardado em `cobertura`
+    // para informação, mas parou de decidir se o cômodo presta.
+    status: (modoCasa() ? cob.ok : (Cap.fotos >= CFG.MIN_FOTOS && Cap.tVideo >= CFG.MIN_SEGUNDOS)) ? 'ok' : 'baixo',
+    take: Cap.take, mime: Cap.mime, ext: extDe(Cap.mime), bytes: Cap.bytes,
     duracao: r1(Cap.tVideo), cobertura: { total: r2(cob.total), faixas: cob.faixas.map(r2), ok: cob.ok, semPitch: cob.semPitch },
     alertas: Object.fromEntries(Object.entries(Cap.alertas).map(([k, v]) => [k, r1(v)])), giros: Cap.giros,
     passos: SEN.passosTot - Cap.passosIni, forcado: !cob.ok, gravado: Cap.iniciado || new Date().toISOString(),
@@ -2292,7 +2402,28 @@ aoMostrar['tela-resumo'] = () => {
       ...['escuro', 'tremido', 'rapido', 'girando', 'pulo'].filter(k => (a[k] || 0) >= 1).map(k => `<span class="pill ${a[k] > 8 ? 'bad' : 'warn'}">${{ escuro: 'escuro', tremido: 'tremido', rapido: 'rápido', girando: 'girou parado', pulo: 'pulos' }[k]} ${Math.round(a[k])}s</span>`),
     ].join('');
     const up = c.upload;
-    const nuvem = !CFG.NUVEM_URL || c.status === 'pendente' ? '' : up && up.tour_url ? `<a href="${esc(up.tour_url)}" target="_blank" rel="noopener">Abrir tour 3D ↗</a>` : up ? `<span class="pill ${up.estado === 'erro' ? 'bad' : 'warn'}">${up.estado === 'erro' ? 'Erro no processamento' : up.estado === 'enviando' ? 'Enviando…' : 'Processando 3D…'}</span>` : '';
+    // ENVIO VISÍVEL. "Enviando…" sozinho num arquivo de 135 MB não diz nada: o
+    // corretor não consegue distinguir lento de travado. Agora mostra a barra, a
+    // porcentagem, quantos MB de quantos, e — quando falha — o motivo e um botão.
+    let nuvem = '';
+    if (CFG.NUVEM_URL && c.status !== 'pendente' && up) {
+      if (up.tour_url) {
+        nuvem = `<a href="${esc(up.tour_url)}" target="_blank" rel="noopener">Abrir tour 3D ↗</a>`;
+      } else if (up.estado === 'erro') {
+        nuvem = `<span class="pill bad">Falhou: ${esc(up.mensagem || 'erro')}</span>
+                 <button class="btn-mini pri" data-acao="reenviar">Tentar de novo</button>`;
+      } else if (up.estado === 'enviando') {
+        const p = up.pct || 0;
+        const det = up.total ? `${fmtBytes(up.feito || 0)} de ${fmtBytes(up.total)}`
+                             : (up.reconectando ? 'reconectando…' : 'preparando o arquivo…');
+        const tent = up.tentativa > 1 ? ` · tentativa ${up.tentativa} de 3` : '';
+        nuvem = `<div class="env"><div class="env-topo"><span>Enviando ${p}%${tent}</span><small>${det}</small></div>
+                 <div class="env-barra"><i style="width:${p}%"></i></div>
+                 <small class="lead">Mantenha esta tela aberta até terminar.</small></div>`;
+      } else {
+        nuvem = `<span class="pill warn">Processando 3D… (~70 min)</span>`;
+      }
+    }
     return `<li class="res-item" data-id="${c.id}"><canvas aria-hidden="true"></canvas><div class="ri">
       <div class="ri-top"><b>${esc(c.nome)}</b><small class="lead num" style="font-size:13px">${c.status === 'pendente' ? '' : fmtTempo(c.duracao) + ' · ' + fmtBytes(c.bytes)}</small></div>
       <div class="chips-p">${chips}</div>${nuvem ? `<div>${nuvem}</div>` : ''}
@@ -2304,7 +2435,7 @@ aoMostrar['tela-resumo'] = () => {
     if (modoCasa()) { cv.hidden = true; return; }   // no modo casa o anel de 360° só confunde
     desenharAnel(cv, c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch });
   });
-  $('#res-nome').title = 'v20261002-01';
+  $('#res-nome').title = 'v20261002-02';
   const saida = $('#res-saida');
   saida.innerHTML = CFG.NUVEM_URL
     ? `<h2>Gerar tour 3D</h2><p>Envia o vídeo e os dados de cada cômodo filmado para o processamento. O link do tour aparece aqui quando ficar pronto.</p><button class="btn btn-pri" id="btn-enviar">Enviar para gerar o 3D</button>`
@@ -2328,25 +2459,88 @@ aoMostrar['tela-resumo'] = () => {
     try { await prepararArquivos(c); const li = ul.querySelector(`[data-id="${c.id}"]`); if (li) $$('button[disabled]', li).forEach(b => { b.disabled = false; }); } catch (e) {}
   });
 };
+/* ENVIO COM PROGRESSO, DESISTÊNCIA E NOVA TENTATIVA.
+
+   O que acontecia antes: `fetch` com um corpo de 135 MB, sem nenhum sinal de vida.
+   O selo ficava "Enviando…" e era impossível distinguir "subindo devagar" de
+   "morreu". Se a conexão caísse no meio, ficava assim para sempre.
+
+   `fetch` não sabe informar progresso de ENVIO (só de descarga). Por isso aqui é
+   XMLHttpRequest, que tem upload.onprogress desde sempre. Mais três coisas:
+   um limite de tempo sem nenhum byte andar, três tentativas com espera crescente,
+   e o motivo real na tela quando desiste. */
+function enviarArquivo(url, fd, aoProgresso, segundosParado = 90) {
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    let ultimoByte = Date.now(), vigia, travou = false;
+    x.open('POST', url, true);
+    x.upload.onprogress = e => {
+      ultimoByte = Date.now();
+      if (e.lengthComputable) aoProgresso(e.loaded, e.total);
+    };
+    x.onload = () => {
+      clearInterval(vigia);
+      if (x.status >= 200 && x.status < 300) { try { res(JSON.parse(x.responseText || '{}')); } catch (e) { res({}); } }
+      else rej(new Error('o servidor respondeu ' + x.status));
+    };
+    x.onerror = () => { clearInterval(vigia); rej(new Error('a conexão caiu')); };
+    // "cancelado" seria mentira: quem abortou foi o vigia, não o corretor
+    x.onabort = () => { clearInterval(vigia); rej(new Error(travou ? 'a conexão parou de responder' : 'envio cancelado')); };
+    // vigia de inatividade: só desiste se NENHUM byte andar; envio lento não é erro
+    vigia = setInterval(() => {
+      if (Date.now() - ultimoByte > segundosParado * 1000) { travou = true; try { x.abort(); } catch (e) {} }
+    }, 2000);
+    x.send(fd);
+  });
+}
+
 async function enviarTudo() {
   const lista = S.imovel.comodos.filter(c => c.status !== 'pendente' && !(c.upload && c.upload.tour_url));
-  for (const c of lista) {
-    try {
-      c.upload = { estado: 'enviando' }; aoMostrar['tela-resumo']();
-      const { video, dados } = await prepararArquivos(c);
-      const fd = new FormData();
-      fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP, imobiliaria: CFG.IMOBILIARIA || '' }));
-      fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} }));
-      if (video) fd.append('video', video, video.name); if (dados) fd.append('dados', dados, dados.name);
-      const r = await fetch(CFG.NUVEM_URL, { method: 'POST', body: fd });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json().catch(() => ({}));
-      c.upload = { estado: j.tour_url ? 'pronto' : 'processando', status_url: j.status_url || null, tour_url: j.tour_url || null };
-      if (j.imovel_url) S.imovel.imovel_url = j.imovel_url;
-    } catch (e) { c.upload = { estado: 'erro', mensagem: String(e.message || e) }; }
-    await salvarImovel(true); aoMostrar['tela-resumo']();
+  if (!lista.length) return toast('Nenhum cômodo filmado para enviar');
+  if (!navigator.onLine) return toast('Sem internet. Conecte e tente de novo.', 5000);
+  ENV.pausado = true;                     // segura as fotos do Certificado
+  try {
+    await enviarComodos(lista);
+  } finally {
+    ENV.pausado = false; bombearEnvio();  // solta a fila, inclusive se deu erro
   }
   acompanharProcessamento();
+}
+async function enviarComodos(lista) {
+  for (const c of lista) {
+    const marcar = u => { c.upload = u; aoMostrar['tela-resumo'](); };
+    let erro = null;
+    for (let tentativa = 1; tentativa <= 3; tentativa++) {
+      try {
+        marcar({ estado: 'enviando', pct: 0, tentativa });
+        const { video, dados } = await prepararArquivos(c);
+        const fd = new FormData();
+        fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP, imobiliaria: CFG.IMOBILIARIA || '' }));
+        fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} }));
+        if (video) fd.append('video', video, video.name);
+        if (dados) fd.append('dados', dados, dados.name);
+        let ultPct = -1;
+        const j = await enviarArquivo(CFG.NUVEM_URL, fd, (feito, total) => {
+          const pct = Math.floor(100 * feito / total);
+          if (pct === ultPct) return;                       // só redesenha quando muda
+          ultPct = pct;
+          marcar({ estado: 'enviando', pct, feito, total, tentativa });
+        });
+        marcar({ estado: j.tour_url ? 'pronto' : 'processando', status_url: j.status_url || null, tour_url: j.tour_url || null });
+        if (j.imovel_url) S.imovel.imovel_url = j.imovel_url;
+        erro = null;
+        break;
+      } catch (e) {
+        erro = e;
+        if (tentativa < 3) {
+          marcar({ estado: 'enviando', pct: 0, tentativa, reconectando: true });
+          await sleep(3000 * tentativa);                    // espera crescente
+        }
+      }
+    }
+    if (erro) marcar({ estado: 'erro', mensagem: String(erro.message || erro) });
+    await salvarImovel(true); aoMostrar['tela-resumo']();
+  }
 }
 let acompanhando = false;
 async function acompanharProcessamento() {
@@ -2483,12 +2677,21 @@ function ligar() {
       if (!ok && (Cap.estado === 'gravando' || Cap.estado === 'pausado')) encerrarCaptura('forcado');
       return;
     }
-    const cob = calcCobertura(Cap.cel, semPitch());
-    if (cob.ok) { await filmarPassagem(); return encerrarCaptura('ok'); }
-    const falta = cob.semPitch ? [] : cob.faixas.map((v, i) => v < CFG.META_FAIXA ? FAIXAS[i].toLowerCase() : null).filter(Boolean);
+    // PORTÃO NOVO. O antigo cobrava "cobertura" do anel de 360°, que mede para onde
+    // o celular APONTOU. Isso premia girar parado — e girar parado não gera paralaxe,
+    // que é de onde o 3D nasce. Era um portão que empurrava para o erro.
+    //
+    // O que realmente prevê um 3D decente é banal: muitas fotos boas, tiradas ao
+    // longo de uma caminhada. Então é isso que ele cobra agora. O anel continua
+    // na tela como informação, mas parou de mandar.
+    const poucas = Cap.fotos < CFG.MIN_FOTOS, curto = Cap.tVideo < CFG.MIN_SEGUNDOS;
+    if (!poucas && !curto) { await filmarPassagem(); return encerrarCaptura('ok'); }
+    const faltam = [];
+    if (poucas) faltam.push(`só ${Cap.fotos} fotos (o bom são ${CFG.MIN_FOTOS} ou mais)`);
+    if (curto) faltam.push(`só ${fmtTempo(Cap.tVideo)} de caminhada (o bom é ${fmtTempo(CFG.MIN_SEGUNDOS)})`);
     const ok = await confirmar({
-      titulo: 'Cobertura ainda baixa',
-      texto: `O mapa está em ${pct(cob.total)} (meta ${pct(CFG.META_TOTAL)})${falta.length ? `; falta completar a altura ${falta.join(', ')}` : ''}. As partes vermelhas podem virar buracos no 3D.`,
+      titulo: 'Ainda é pouco material',
+      texto: `Até agora: ${faltam.join(' e ')}. Dá para terminar assim, mas o 3D sai com buracos. Mais uma volta devagar resolve.`,
       sim: 'Continuar filmando', nao: 'Terminar mesmo assim',
     });
     if (!ok && (Cap.estado === 'gravando' || Cap.estado === 'pausado')) {
@@ -2514,6 +2717,8 @@ function ligar() {
     if (b.dataset.acao === 'filmar') return irFilmar(id);
     // Sem isto não havia volta do resumo para o Certificado: ele ficava inalcançável.
     if (b.dataset.acao === 'rever') { S.atual = id; return mostrar('tela-revisao'); }
+    // envio que falhou: limpa o estado e manda de novo só este cômodo
+    if (b.dataset.acao === 'reenviar') { if (c) c.upload = null; aoMostrar['tela-resumo'](); return enviarTudo(); }
     const arq = S.arquivos.get(id); if (!arq) return toast('Preparando arquivos…');
     entregar([b.dataset.acao === 'video' ? arq.video : arq.dados]);
     void c;
