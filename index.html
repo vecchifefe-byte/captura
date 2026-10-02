@@ -278,7 +278,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela tela-pc" id="tela-pc" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-04</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-05</span></span>
   </header>
   <div class="pc-grid">
     <div class="pc-texto">
@@ -317,7 +317,7 @@ video.rev{width:100%;max-height:60vh;border-radius:var(--r);background:#000}
 <section class="tela" id="tela-inicio" hidden>
   <header class="topo">
     <span class="marca"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5 21 7.5v9L12 21.5 3 16.5v-9L12 2.5Z" stroke="#5fb3ff" stroke-width="1.8"/><path d="M12 12 21 7.5M12 12 3 7.5M12 12v9.5" stroke="#5fb3ff" stroke-width="1.8" opacity=".55"/></svg>Captura 3D</span>
-    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-04</span></span>
+    <span class="pill">Protótipo · nuvem ligada · <span class="versao-site">v20261002-05</span></span>
   </header>
   <div class="inicio-hero"><canvas data-anim="contorno" aria-hidden="true"></canvas></div>
   <h1>Assistente de filmagem 3D</h1>
@@ -1768,7 +1768,11 @@ async function tirarFoto(m) {
     Cap.fila = Cap.fila.then(() => DB.addFoto(take, seq, blob, meta)).catch(() => {
       if (!Cap.erroGravar) { Cap.erroGravar = true; toast('Armazenamento do aparelho cheio: termine este andar', 5000); }
     });
-    if (CFG.CERT_URL && (!S.demo || S.envioDemo)) enfileirarEnvio({ take, seq, blob, meta, comodo: slug(amb) });
+    // o gatilho agora é o TOUR (ou o Certificado, se ligado): é a foto subindo
+    // durante a caminhada que elimina a espera de 12 minutos no fim
+    if ((tourBase() || CFG.CERT_URL) && (!S.demo || S.envioDemo)) {
+      enfileirarEnvio({ take, seq, blob, meta, comodo: slug(amb), comodoId: comodo(S.atual).id });
+    }
     bip(880, 60); vibrar(30);
     const fl = $('#g-flash'); fl.className = ''; void fl.offsetWidth; fl.className = 'on';
     $('#g-fotos').textContent = Cap.fotos;
@@ -1794,17 +1798,68 @@ function bombearEnvio() {
   }
   atualizarEnvioUI();
 }
+/* CADA FOTO SOBE DURANTE A CAMINHADA, para o tour e (se ligado) para o Certificado.
+
+   POR QUE. O caminho antigo guardava tudo e só no fim subia o vídeo inteiro: medido,
+   131 MB a 1,5 Mbps são 12 minutos parado segurando o celular aceso, com o cliente
+   esperando. E era desperdício duplo — o servidor extraía ~150 quadros desse vídeo
+   e jogava o resto fora, e as mesmas imagens já subiam em paralelo para o
+   Certificado.
+
+   Agora as fotos vão subindo enquanto ele anda. Ao terminar o cômodo já chegou quase
+   tudo, e "Enviar para gerar o 3D" é só um aviso de alguns kB.
+
+   De quebra a qualidade sobe: foto não passa pela compressão de vídeo, que é o que
+   mais atrapalha o casamento de pontos entre imagens.
+
+   Falhar aqui NÃO pode atrapalhar a gravação: o vídeo continua salvo no aparelho e
+   serve de rede de segurança — se o envio contínuo não vingar, o caminho do vídeo
+   ainda está lá. */
+const tourBase = () => (CFG.NUVEM_URL || '').replace(/\/enviar\/?$/, '');
+
+/* O servidor aceita foto a foto? Pergunta UMA vez e guarda a resposta.
+
+   Sem isto, um site novo falando com um servidor antigo tentaria 404 em cada uma
+   das ~300 fotos do cômodo, gastando bateria e banda à toa — e o corretor veria
+   um contador de erros subindo sem motivo. Com a resposta guardada, servidor
+   antigo simplesmente não recebe nada e o caminho do vídeo segue valendo.
+
+   Em caso de dúvida assume NÃO: enviar demais atrapalha, enviar de menos só cai
+   na rede de segurança que já existe. */
+let _fotoDireto = null;
+async function servidorAceitaFotos() {
+  if (_fotoDireto !== null) return _fotoDireto;
+  if (!tourBase()) return (_fotoDireto = false);
+  try {
+    const r = await fetch(`${tourBase()}/fotos/_teste/_teste`, { method: 'GET' });
+    _fotoDireto = r.ok && typeof (await r.json()).recebidas === 'number';
+  } catch (e) { _fotoDireto = false; }
+  return _fotoDireto;
+}
 async function enviarFoto(it) {
-  const fd = new FormData();
-  fd.append('imovel', S.imovel.id); fd.append('comodo', it.comodo || 'sem-nome');
-  fd.append('take', it.take); fd.append('seq', String(it.seq)); fd.append('meta', JSON.stringify(it.meta));
-  fd.append('foto', it.blob, `q${String(it.seq).padStart(5, '0')}.jpg`);
-  const r = await fetch(CFG.CERT_URL + '/foto', { method: 'POST', body: fd });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const nome = `q${String(it.seq).padStart(5, '0')}.jpg`;
+  const destinos = [];
+  if (await servidorAceitaFotos()) {
+    const fd = new FormData();
+    fd.append('imovel', S.imovel.id); fd.append('comodo', it.comodoId || 'sem-nome');
+    fd.append('seq', String(it.seq)); fd.append('foto', it.blob, nome);
+    destinos.push(fetch(tourBase() + '/foto', { method: 'POST', body: fd }));
+  }
+  if (CFG.CERT_URL) {
+    const fd = new FormData();
+    fd.append('imovel', S.imovel.id); fd.append('comodo', it.comodo || 'sem-nome');
+    fd.append('take', it.take); fd.append('seq', String(it.seq)); fd.append('meta', JSON.stringify(it.meta));
+    fd.append('foto', it.blob, nome);
+    destinos.push(fetch(CFG.CERT_URL + '/foto', { method: 'POST', body: fd }));
+  }
+  if (!destinos.length) return;
+  const rs = await Promise.all(destinos);
+  // o do tour é o que importa; se o Certificado falhar sozinho, não vale repetir tudo
+  if (!rs[0].ok) throw new Error('HTTP ' + rs[0].status);
 }
 function atualizarEnvioUI() {
   const el = $('#g-env'); if (!el) return;
-  el.hidden = !CFG.CERT_URL || (S.demo && !S.envioDemo);
+  el.hidden = !(tourBase() || CFG.CERT_URL) || (S.demo && !S.envioDemo);
   const pend = ENV.fila.length + ENV.ativos;
   el.textContent = `↑ ${ENV.ok}${pend ? ' · ' + pend : ''}${ENV.erros ? ' · ' + ENV.erros + ' falhou' : ''}`;
 }
@@ -2467,7 +2522,7 @@ aoMostrar['tela-resumo'] = () => {
     if (modoCasa()) { cv.hidden = true; return; }   // no modo casa o anel de 360° só confunde
     desenharAnel(cv, c.cel || [0, 1, 2].map(() => new Array(CFG.SETORES).fill(0)), { fino: true, semPitch: c.cobertura && c.cobertura.semPitch });
   });
-  $('#res-nome').title = 'v20261002-04';
+  $('#res-nome').title = 'v20261002-05';
   const saida = $('#res-saida');
   saida.innerHTML = CFG.NUVEM_URL
     ? `<h2>Gerar tour 3D</h2><p>Envia o vídeo e os dados de cada cômodo filmado para o processamento. O link do tour aparece aqui quando ficar pronto.</p><button class="btn btn-pri" id="btn-enviar">Enviar para gerar o 3D</button>`
@@ -2544,10 +2599,41 @@ async function enviarComodos(lista) {
   for (const c of lista) {
     const marcar = u => { c.upload = u; aoMostrar['tela-resumo'](); };
     let erro = null;
+    // CAMINHO RÁPIDO: as fotos já subiram durante a filmagem? Então "enviar" é só
+    // avisar o servidor — alguns kB em vez de 131 MB. Só cai no vídeo se faltarem
+    // fotos lá (aparelho que perdeu conexão, ou filmagem feita antes desta versão).
+    if (await servidorAceitaFotos()) {
+      try {
+        const q = await fetch(`${tourBase()}/fotos/${encodeURIComponent(S.imovel.id)}/${encodeURIComponent(c.id)}`);
+        const { recebidas } = await q.json();
+        if (recebidas >= Math.max(10, Math.round((c.fotos || 0) * 0.8))) {
+          marcar({ estado: 'enviando', pct: 90, tentativa: 1, total: 0 });
+          const { dados } = await prepararArquivos(c);
+          const fd = new FormData();
+          fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP, imobiliaria: CFG.IMOBILIARIA || '' }));
+          fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} }));
+          if (dados) fd.append('dados', dados, dados.name);
+          const r = await fetch(tourBase() + '/fechar', { method: 'POST', body: fd });
+          if (r.ok) {
+            const j = await r.json();
+            marcar({ estado: j.tour_url ? 'pronto' : 'processando', status_url: j.status_url || null, tour_url: j.tour_url || null });
+            if (j.imovel_url) S.imovel.imovel_url = j.imovel_url;
+            await salvarImovel(true); aoMostrar['tela-resumo']();
+            continue;                       // próximo cômodo: nem tocou no vídeo
+          }
+        } else if (recebidas) {
+          toast(`${recebidas} de ${c.fotos} fotos chegaram; mandando o vídeo`, 4000);
+        }
+      } catch (e) { /* servidor fora do ar ou rota antiga: segue pelo vídeo */ }
+    }
     for (let tentativa = 1; tentativa <= 3; tentativa++) {
       try {
         marcar({ estado: 'enviando', pct: 0, tentativa });
         const { video, dados } = await prepararArquivos(c);
+        // Nem fotos no servidor nem vídeo no aparelho: não adianta tentar três vezes.
+        // Sem isto o servidor recusa o pedido vazio e o corretor lê "o servidor
+        // respondeu 422", que não diz o que houve nem o que fazer.
+        if (!video) throw Object.assign(new Error('o vídeo deste cômodo não está mais no aparelho — refilme'), { fatal: true });
         const fd = new FormData();
         fd.append('imovel', JSON.stringify({ id: S.imovel.id, nome: S.imovel.nome, marca: CFG.MARCA, whatsapp: CFG.WHATSAPP, imobiliaria: CFG.IMOBILIARIA || '' }));
         fd.append('comodo', JSON.stringify({ id: c.id, nome: c.nome, tipo: c.tipo || 'comodo', marcadores: c.marcadores || {} }));
@@ -2566,6 +2652,7 @@ async function enviarComodos(lista) {
         break;
       } catch (e) {
         erro = e;
+        if (e && e.fatal) break;            // repetir não muda nada
         if (tentativa < 3) {
           marcar({ estado: 'enviando', pct: 0, tentativa, reconectando: true });
           await sleep(3000 * tentativa);                    // espera crescente
