@@ -564,11 +564,19 @@ const CFG = {
   MIN_SEGUNDOS: 50,       // segundos de caminhada
   FOTO_FORCA: 2200,       // ms sem nada mudar: tira assim mesmo, para não haver buraco
   FOTO_QUALIDADE: 0.9,    // qualidade do JPEG
-  // Largura máxima da foto guardada. Os guias de treino usam ~1,6k px; o que passa
-  // disso é descartado no treino de qualquer jeito. Medido: a 2,4 fotos/s um
-  // apartamento de 6 ambientes dá 327 MB a 1920 px e 273 MB a 1600 — 17% a menos
-  // para subir de dentro do imóvel, sem perder nada que o treino fosse usar.
-  FOTO_LARGURA_MAX: 1600,
+  // Largura máxima da foto guardada.
+  //
+  // ESTAVA EM 1600 COM UMA PREMISSA ERRADA: "o treino descarta o que passa de 1,6k".
+  // Medido no COLMAP do quarto real (Dimensions: 1080 x 1920), as fotos que treinaram
+  // o 3D tinham 1080 px de largura — bem abaixo do corte. O teto não era este número,
+  // era a CÂMERA, que estava sendo pedida em 1920x1080 e em retrato entrega 1080 de
+  // largura. Nenhum 3D fica mais nítido que as fotos que o geraram, então era aí que
+  // a nitidez morria.
+  //
+  // Agora a câmera é pedida em 4K (ver abrirCamera) e isto acompanha. 2304 px é o
+  // dobro do que entrava antes; o arquivo por foto cresce ~2x, e quem paga essa conta
+  // é o envio durante a caminhada, não uma espera no fim.
+  FOTO_LARGURA_MAX: 2304,
   FOTO_AVISO: 9000,       // ms sem nenhuma foto: diz o motivo em voz alta
   VOZ: true,              // orientação falada (o iPhone não vibra pelo navegador)
   IMOBILIARIA: '',        // código da imobiliária cadastrada no servidor (imobiliarias.json); vazio = padrão
@@ -1080,7 +1088,10 @@ async function abrirCamera() {
   if (S.demo) { CAM.stream = Demo.iniciar(); CAM.info = { w: 540, h: 960, fps: 30, rotulo: 'demo' }; return CAM.stream; }
   if (!window.isSecureContext) throw Object.assign(new Error('Abra o site pelo endereço https:// (GitHub Pages). A câmera só funciona em conexão segura.'), { name: 'Inseguro' });
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('Este navegador não dá acesso à câmera. Use o Chrome (Android) ou o Safari (iPhone).'), { name: 'SemSuporte' });
-  const pedido = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } };
+  // 4K. O 3D nunca fica mais nítido que as fotos de entrada, e pedindo 1920x1080 em
+  // retrato o celular entregava 1080 px de largura — foi o teto medido no quarto real.
+  // "ideal" não falha: aparelho sem 4K entrega o maior que tiver.
+  const pedido = { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30, max: 30 } };
   let st;
   try { st = await navigator.mediaDevices.getUserMedia({ video: pedido, audio: false }); }
   catch (e) {
@@ -1094,7 +1105,7 @@ async function abrirCamera() {
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
     const ultra = devs.find(d => /ultra|wide|grande|0[.,]5/i.test(d.label) && !/front|frontal|tele/i.test(d.label));
     if (ultra && ultra.deviceId !== (tr.getSettings().deviceId || '')) {
-      const st2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ultra.deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
+      const st2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ultra.deviceId }, width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
       st.getTracks().forEach(t => t.stop()); st = st2; tr = st.getVideoTracks()[0]; CAM.lente = 'ultra';
     }
   } catch (e) {}
@@ -1567,7 +1578,13 @@ function filmarPassagem() {
 function iniciarGravador() {
   const mime = escolherMime();
   if (mime === null) { $('#erro-txt').textContent = 'Este navegador não consegue gravar vídeo. Atualize o Chrome ou o Safari.'; $('#g-erro').hidden = false; Cap.estado = 'parado'; return false; }
-  const opts = { videoBitsPerSecond: CFG.VIDEO_BPS }; if (mime) opts.mimeType = mime;
+  // Bitrate proporcional à resolução que a câmera entregou. Fixo em 8 Mbps, um stream
+  // 4K ficaria com metade dos bits por pixel de um 1080p — mais pixels e mais artefato
+  // de compressão, que é exatamente o que lava a textura no treino. ~0,1 bit por pixel
+  // por quadro mantém a mesma qualidade por pixel em qualquer resolução.
+  const px = (CAM.info && CAM.info.w && CAM.info.h) ? CAM.info.w * CAM.info.h : 1920 * 1080;
+  const bps = Math.round(Math.min(Math.max(px * 30 * 0.1, CFG.VIDEO_BPS), 28e6));
+  const opts = { videoBitsPerSecond: bps }; if (mime) opts.mimeType = mime;
   let rec;
   try { rec = new MediaRecorder(CAM.stream, opts); }
   catch (e) { try { rec = new MediaRecorder(CAM.stream); } catch (e2) { $('#erro-txt').textContent = 'Não foi possível iniciar a gravação: ' + (e2.message || e2); $('#g-erro').hidden = false; Cap.estado = 'parado'; return false; } }
