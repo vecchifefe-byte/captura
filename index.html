@@ -1154,6 +1154,29 @@ async function travarCamera() {
     r.branco = await tentar('whiteBalanceMode', 'manual');
     // foco: 'manual' é o ideal; 'single-shot' trava depois de focar uma vez e serve
     r.foco = (await tentar('focusMode', 'manual')) || (await tentar('focusMode', 'single-shot'));
+
+    // TEMPO DE EXPOSIÇÃO CURTO: é o que tira o borrão de MOVIMENTO.
+    //
+    // Travar o modo em manual só impede o celular de MUDAR a exposição entre fotos.
+    // Dentro de casa ele escolhe algo em torno de 1/30 s, e a pessoa está ANDANDO —
+    // cada foto já nasce arrastada. Isso não se conserta no treino: o 3D aprende o
+    // borrão como se fosse a textura da parede, e nenhuma resolução salva depois.
+    //
+    // 1/125 s congela o passo. O preço é imagem mais escura e com mais ruído — e
+    // ruído o treino perdoa (ele some na média de centenas de fotos), borrão não.
+    // Se o aparelho tiver ISO, sobe o ISO para compensar.
+    if (r.exposicao && cap.exposureTime) {
+      const un = 1 / 125 * 10000;                 // WebRTC conta exposureTime em 100 µs
+      const alvo = Math.max(cap.exposureTime.min || 0, Math.min(un, cap.exposureTime.max || un));
+      try {
+        await tr.applyConstraints({ advanced: [{ exposureTime: alvo }] });
+        r.tempo = Math.round(alvo);
+        if (cap.iso) {                            // compensa o escuro: ruído atrapalha menos que tremido
+          const iso = Math.min(cap.iso.max || 0, Math.max(cap.iso.min || 0, 800));
+          try { await tr.applyConstraints({ advanced: [{ iso }] }); r.iso = iso; } catch (e) {}
+        }
+      } catch (e) {}
+    }
   } catch (e) {}
   CAM.travas = r;
   CAM.brilhoTravado = r.exposicao || r.branco;
@@ -1501,6 +1524,8 @@ async function iniciarCaptura() {
   if (tv.suportado) {
     const presos = [tv.exposicao && 'brilho', tv.branco && 'cor', tv.foco && 'foco'].filter(Boolean);
     $('#g-res').textContent += presos.length ? ' · ' + presos.join('+') + ' travado' : ' · sem trava';
+    // o tempo curto é o que mais importa para a nitidez: mostra quando pegou
+    if (tv.tempo) $('#g-res').textContent += ' · 1/125s';
   }
   Cap.estado = 'gravando'; Cap.tUlt = performance.now(); Cap.iniciado = new Date().toISOString();
   $('#g-rec').classList.add('on');
