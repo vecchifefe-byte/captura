@@ -1053,6 +1053,17 @@ function onMov(e) {
     registrarAcel(mag, t);
     SEN.temMov = true;
   }
+  // grava o sinal cru enquanto estiver gravando (ver o comentário em zerarCap)
+  if (Cap.estado === 'gravando' && Cap.imu && Cap.imu.t.length < 200000) {
+    const u = Cap.imu, t = Math.round(performance.now());
+    u.t.push(t);
+    u.gx.push(rr ? Math.round((rr.alpha || 0) * 10) : 0);
+    u.gy.push(rr ? Math.round((rr.beta || 0) * 10) : 0);
+    u.gz.push(rr ? Math.round((rr.gamma || 0) * 10) : 0);
+    u.ax.push(a ? Math.round((a.x || 0) * 100) : 0);
+    u.ay.push(a ? Math.round((a.y || 0) * 100) : 0);
+    u.az.push(a ? Math.round((a.z || 0) * 100) : 0);
+  }
 }
 function registrarAcel(mag, t) {
   SEN._lp = SEN._lp == null ? mag : SEN._lp * .75 + mag * .25;
@@ -1371,6 +1382,24 @@ function zerarCap() {
     fotoTirando: false, bytesFotos: 0, ambienteAtual: '', ambientes: {}, herdado: null,
     volta: 0, fotosVolta: [0, 0, 0], voltaAvisada: -1,
     movUlt: 0, ritmoUlt: null, ritmoFalaUlt: 0,     // ritmo da varredura contínua
+    // SENSOR CRU, EM ALTA FREQUÊNCIA.
+    //
+    // As `amostras` acima são de 5 em 5 por segundo e servem para GUIAR o corretor.
+    // Isto aqui é outra coisa: o giroscópio e o acelerômetro como o aparelho entrega
+    // (~60 Hz), guardados para o SERVIDOR usar na reconstrução.
+    //
+    // Por que vale: o celular lê a imagem linha a linha (rolling shutter) e a pessoa
+    // está andando, então cada foto é tirada de uma pose ligeiramente diferente de
+    // cima a baixo. O gsplat sabe tratar isso (3DGUT), mas precisa saber QUANTO a
+    // câmera girou durante aquela foto — e isso não dá para adivinhar da imagem.
+    // O giroscópio sabe. Também dá a direção da gravidade (nivelar o cômodo sem
+    // chutar) e, cruzado com a trajetória visual, a escala em metros de verdade.
+    //
+    // Guardado em arrays paralelos de inteiros (giro em décimos de grau/s, aceleração
+    // em centésimos de m/s²): ~10 mil amostras num cômodo, ~250 KB de JSON.
+    imu: { t: [], gx: [], gy: [], gz: [], ax: [], ay: [], az: [] },
+    // ponte entre o relógio do navegador e o tempo de vídeo (há pausas no meio)
+    relogio: [],
   });
   AN.prev = null; AN.nitHist = []; AN.parHist = [];
 }
@@ -1982,6 +2011,9 @@ function tick() {
   }
   const avisoAtual = gerirAviso(ativos);
   Cap.amostras.push([r2(Cap.tVideo), r1(head), r1(pitch), r1(roll), faixa, r1(Cap.yaw), r1(gyro), r2(aVar), SEN.passosTot - Cap.passosIni, r1(nit), r1(luz), mov && mov.textura ? r2(mov.par) : null, mov ? mov.mx : null, mov ? mov.my : null, andando ? 1 : 0, boa ? 1 : 0, avisoAtual || '']);
+  // par (relógio do navegador, tempo de vídeo): é o que deixa o servidor casar cada
+  // amostra do giroscópio com o instante certo do vídeo, mesmo com pausas no meio
+  if (Cap.relogio) Cap.relogio.push([Math.round(performance.now()), r2(Cap.tVideo)]);
   $('#g-tempo').textContent = fmtTempo(Cap.tVideo);
   const cob = calcCobertura(Cap.cel, semPitch());
   atualizarPainel(cob, faixa, rel, andando, avisoAtual);
@@ -2331,6 +2363,14 @@ function montarJSON(c) {
     campos: ['t_video_s', 'direcao_graus', 'inclinacao_graus', 'rolagem_graus', 'faixa', 'giro_horizontal_gps', 'giro_total_gps', 'var_aceleracao', 'passos', 'nitidez', 'luz', 'paralaxe_px', 'mov_x_px', 'mov_y_px', 'andando', 'quadro_bom', 'aviso'],
     notas: { faixa: '0=alto (câmera para baixo), 1=meio, 2=baixo (câmera para cima)', inclinacao_graus: 'positivo = câmera para cima', giro_gps: 'graus por segundo', nitidez: 'variância do Laplaciano em quadro de 200 px de largura', luz: 'brilho médio 0–255', mov_px: 'deslocamento global entre amostras, em quadro de 100 px de largura', quadro_bom: '1 = nítido, com luz, sem giro rápido e com deslocamento (bom para reconstrução)' },
     amostras: Cap.amostras,
+    // sinal cru do giroscópio e do acelerômetro + a ponte de relógio (ver zerarCap)
+    imu: Cap.imu && Cap.imu.t.length ? {
+      hz: Cap.imu.t.length > 1 ? r1(1000 * (Cap.imu.t.length - 1) / (Cap.imu.t[Cap.imu.t.length - 1] - Cap.imu.t[0])) : 0,
+      unidades: { t: 'ms do relógio do navegador', g: 'décimos de grau por segundo (alpha,beta,gamma)', a: 'centésimos de m/s² com gravidade (x,y,z)' },
+      n: Cap.imu.t.length, t: Cap.imu.t, gx: Cap.imu.gx, gy: Cap.imu.gy, gz: Cap.imu.gz,
+      ax: Cap.imu.ax, ay: Cap.imu.ay, az: Cap.imu.az,
+    } : null,
+    relogio: Cap.relogio && Cap.relogio.length ? { campos: ['ms_navegador', 't_video_s'], pares: Cap.relogio } : null,
   };
 }
 const nomeArquivo = (c, ext) => `${slug(S.imovel.nome)}_${slug(c.nome)}.${ext}`;
